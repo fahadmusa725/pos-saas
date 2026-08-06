@@ -1,263 +1,322 @@
 import { useEffect, useState, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import api from '../services/api';
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { BarChart3, TrendingUp, DollarSign, Award, CreditCard, ShoppingBag, Filter } from 'lucide-react';
 
-const PIE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+const COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
 
 function Reports() {
-  const now = new Date();
-  const firstDayStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const todayStr = now.toISOString().split('T')[0];
-
-  const [startDate, setStartDate] = useState(firstDayStr);
-  const [endDate, setEndDate] = useState(todayStr);
-
   const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
 
-  // Report States
-  const [salesReport, setSalesReport] = useState({ totalRevenue: 0, totalOrders: 0, dailyTrend: [] });
+  const [salesData, setSalesData] = useState({ totalRevenue: 0, totalPaidOrders: 0, trend: [] });
   const [bestSellers, setBestSellers] = useState([]);
   const [orderTypeData, setOrderTypeData] = useState([]);
   const [paymentData, setPaymentData] = useState([]);
-  const [profitLoss, setProfitLoss] = useState({ totalRevenue: 0, totalExpenses: 0, netProfit: 0, isProfitable: true });
+  const [profitLoss, setProfitLoss] = useState({ totalRevenue: 0, totalExpenses: 0, netProfit: 0 });
+  const [error, setError] = useState(null);
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-    const queryString = params.toString() ? `?${params.toString()}` : '';
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      const q = `?${params.toString()}`;
 
-    const [salesRes, bestRes, orderTypeRes, payRes, plRes] = await Promise.allSettled([
-      api.get(`/reports/sales${queryString}`),
-      api.get(`/reports/best-sellers${queryString}`),
-      api.get(`/reports/order-type-breakdown${queryString}`),
-      api.get(`/reports/payment-breakdown${queryString}`),
-      api.get(`/reports/profit-loss${queryString}`),
-    ]);
+      const [sRes, bRes, otRes, pRes, plRes] = await Promise.allSettled([
+        api.get(`/reports/sales${q}`),
+        api.get(`/reports/best-sellers${q}`),
+        api.get(`/reports/order-type-breakdown${q}`),
+        api.get(`/reports/payment-breakdown${q}`),
+        api.get(`/reports/profit-loss${q}`),
+      ]);
 
-    if (salesRes.status === 'fulfilled') setSalesReport(salesRes.value.data);
-    if (bestRes.status === 'fulfilled') setBestSellers(bestRes.value.data.data);
-    if (orderTypeRes.status === 'fulfilled') setOrderTypeData(orderTypeRes.value.data.data);
-    if (payRes.status === 'fulfilled') setPaymentData(payRes.value.data.data);
-    if (plRes.status === 'fulfilled') setProfitLoss(plRes.value.data);
-
-    setLoading(false);
+      if (sRes.status === 'fulfilled') {
+        const d = sRes.value.data;
+        // Backend returns: { success, totalRevenue, totalOrders, dailyTrend: [{_id, totalRevenue, orderCount}] }
+        setSalesData({
+          totalRevenue: d?.totalRevenue ?? 0,
+          totalPaidOrders: d?.totalOrders ?? d?.totalPaidOrders ?? 0,
+          // Normalize dailyTrend → [{date, revenue}] for AreaChart
+          trend: Array.isArray(d?.dailyTrend)
+            ? d.dailyTrend.map((t) => ({ date: t._id, revenue: t.totalRevenue }))
+            : Array.isArray(d?.trend)
+            ? d.trend
+            : [],
+        });
+      }
+      if (bRes.status === 'fulfilled') {
+        const raw = bRes.value.data;
+        // Backend returns: { data: [{_id: itemName, quantitySold, totalRevenue}] }
+        // Normalize to: [{name, totalQuantity, totalRevenue}]
+        const arr = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
+        setBestSellers(arr.map((item) => ({
+          name: item.name ?? item._id,           // _id holds item name
+          totalQuantity: item.totalQuantity ?? item.quantitySold ?? 0,
+          totalRevenue: item.totalRevenue ?? 0,
+          _id: item._id,
+        })));
+      }
+      if (otRes.status === 'fulfilled') {
+        const raw = otRes.value.data;
+        const arr = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
+        setOrderTypeData(arr);
+      }
+      if (pRes.status === 'fulfilled') {
+        const raw = pRes.value.data;
+        // Backend returns: { data: [{method, totalAmount, transactionCount, percentage}] }
+        // Normalize to: [{_id: method, total: totalAmount}] for PieChart dataKey="total" nameKey="_id"
+        const arr = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
+        setPaymentData(arr.map((item) => ({
+          _id: item._id ?? item.method,             // method → _id for nameKey
+          total: item.total ?? item.totalAmount ?? 0, // totalAmount → total for dataKey
+          transactionCount: item.transactionCount ?? 0,
+          percentage: item.percentage ?? 0,
+        })));
+      }
+      if (plRes.status === 'fulfilled') {
+        const d = plRes.value.data;
+        const payload = d?.data ?? d;
+        setProfitLoss({
+          totalRevenue: payload?.totalRevenue ?? 0,
+          totalExpenses: payload?.totalExpenses ?? 0,
+          netProfit: payload?.netProfit ?? 0,
+        });
+      }
+    } catch (err) {
+      console.error('Reports fetch error:', err);
+      setError('Failed to load reports data.');
+      toast.error('Failed to load reports');
+    } finally {
+      setLoading(false);
+    }
   }, [startDate, endDate]);
 
   useEffect(() => {
     fetchReports();
   }, [fetchReports]);
 
-  const profitLossBarData = [
-    { name: 'Revenue', amount: profitLoss.totalRevenue, fill: '#10B981' },
-    { name: 'Expenses', amount: profitLoss.totalExpenses, fill: '#EF4444' },
-    { name: 'Net Profit/Loss', amount: Math.abs(profitLoss.netProfit), fill: profitLoss.isProfitable ? '#3B82F6' : '#DC2626' },
-  ];
+  // Max quantity for best-seller horizontal progress bars
+  const safeBestSellers = Array.isArray(bestSellers) ? bestSellers : [];
+  const safePaymentData = Array.isArray(paymentData) ? paymentData : [];
+  const safeTrend = Array.isArray(salesData?.trend) ? salesData.trend : [];
+  const maxQty = safeBestSellers.length > 0 ? Math.max(...safeBestSellers.map(b => b.totalQuantity ?? 0)) : 1;
+
+  if (error && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 space-y-4">
+        <p className="text-rose-500 font-semibold text-lg">{error}</p>
+        <button
+          onClick={fetchReports}
+          className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header & Date Range Picker */}
-      <div className="flex flex-wrap justify-between items-center gap-4 bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Reports & Analytics</h1>
-          <p className="text-xs text-gray-500 mt-1">Business intelligence & revenue insights</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
+            Reports & Analytics
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            Visual breakdown of sales trends, best sellers, payment methods, and net profit
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-gray-700 uppercase">Range:</span>
+        {/* Date Range Selector */}
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-3 shadow-xs flex items-center gap-3">
+          <Filter className="w-4 h-4 text-amber-500" />
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500"
+            className="px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs text-neutral-900 dark:text-neutral-100"
           />
-          <span className="text-xs text-gray-400">to</span>
+          <span className="text-neutral-400 text-xs font-bold">to</span>
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500"
+            className="px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs text-neutral-900 dark:text-neutral-100"
           />
         </div>
       </div>
 
-      {/* Top Metric Cards */}
+      {/* Overview Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Revenue</p>
-          <p className="text-2xl font-extrabold text-emerald-600 mt-2">Rs. {salesReport.totalRevenue || 0}</p>
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500">
+              <DollarSign className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+              Total Sales
+            </span>
+          </div>
+          <p className="text-3xl font-extrabold text-neutral-900 dark:text-white">Rs. {salesData.totalRevenue || 0}</p>
+          <p className="text-xs text-neutral-400 mt-1">{salesData.totalPaidOrders || 0} Paid Orders</p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Paid Orders</p>
-          <p className="text-2xl font-extrabold text-blue-600 mt-2">{salesReport.totalOrders || 0}</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Expenses</p>
-          <p className="text-2xl font-extrabold text-red-500 mt-2">Rs. {profitLoss.totalExpenses || 0}</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Net Profit / Loss</p>
-          <p className={`text-2xl font-extrabold mt-2 ${profitLoss.isProfitable ? 'text-emerald-600' : 'text-red-600'}`}>
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+              Net Profit
+            </span>
+          </div>
+          <p className={`text-3xl font-extrabold ${profitLoss.netProfit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
             Rs. {profitLoss.netProfit || 0}
           </p>
+          <p className="text-xs text-neutral-400 mt-1">Rev: Rs. {profitLoss.totalRevenue} | Exp: Rs. {profitLoss.totalExpenses}</p>
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500">
+              <ShoppingBag className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+              Order Volume
+            </span>
+          </div>
+          <p className="text-3xl font-extrabold text-neutral-900 dark:text-white">{salesData.totalPaidOrders || 0}</p>
+          <p className="text-xs text-neutral-400 mt-1">Completed orders</p>
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-500">
+              <Award className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-500 border border-purple-500/20">
+              Top Seller
+            </span>
+          </div>
+          <p className="text-xl font-extrabold text-neutral-900 dark:text-white truncate">
+            {bestSellers[0]?.name || 'N/A'}
+          </p>
+          <p className="text-xs text-neutral-400 mt-1">{bestSellers[0] ? `${bestSellers[0].totalQuantity} sold` : 'No data'}</p>
         </div>
       </div>
 
-      {/* Chart Section 1: Revenue Trend */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Revenue Trend (Daily)</h2>
+      {/* Revenue Trend Area Chart */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
+        <h2 className="text-base font-bold text-neutral-900 dark:text-white">Revenue Trend (Daily)</h2>
         {loading ? (
-          <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading trend data...</div>
-        ) : salesReport.dailyTrend?.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-sm text-gray-400 italic">No revenue recorded in this date range.</div>
+          <div className="h-64 bg-neutral-100 dark:bg-neutral-800 rounded-xl animate-pulse" />
+        ) : safeTrend.length === 0 ? (
+          <p className="py-12 text-center text-neutral-400 italic">No revenue trend data found for range.</p>
         ) : (
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={salesReport.dailyTrend}>
+              <AreaChart data={safeTrend}>
                 <defs>
-                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                  <linearGradient id="amberGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="_id" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value) => [`Rs. ${value}`, 'Revenue']} />
-                <Area type="monotone" dataKey="totalRevenue" stroke="#3B82F6" fillOpacity={1} fill="url(#colorRev)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.2} />
+                <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickFormatter={(v) => v?.slice(5) ?? v} />
+                <YAxis stroke="#94a3b8" fontSize={11} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#171717',
+                    borderColor: '#404040',
+                    borderRadius: '12px',
+                    color: '#fff',
+                    fontSize: '12px',
+                  }}
+                />
+                <Area type="monotone" dataKey="revenue" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#amberGradient)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         )}
       </div>
 
-      {/* Chart Section 2 & 3: Best Sellers & Profit/Loss Bar */}
+      {/* Best Sellers & Payment Breakdown Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top 10 Best Sellers */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Top Best Selling Items</h2>
-          {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading best sellers...</div>
-          ) : bestSellers.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400 italic">No items sold in this period.</div>
+        {/* Top Selling Items */}
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">Top Selling Items</h2>
+          {safeBestSellers.length === 0 ? (
+            <p className="py-8 text-center text-neutral-400 italic">No sales recorded yet.</p>
           ) : (
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={bestSellers} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 12 }} />
-                  <YAxis dataKey="_id" type="category" width={100} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(val, name) => [name === 'quantitySold' ? `${val} sold` : `Rs. ${val}`, name === 'quantitySold' ? 'Quantity' : 'Revenue']} />
-                  <Bar dataKey="quantitySold" fill="#10B981" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="space-y-4">
+              {safeBestSellers.map((item, idx) => {
+                const pct = Math.round((item.totalQuantity / maxQty) * 100);
+                return (
+                  <div key={item._id} className="space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2 font-bold text-neutral-900 dark:text-white">
+                        <span className="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center text-[10px]">
+                          #{idx + 1}
+                        </span>
+                        {item.name}
+                      </div>
+                      <span className="text-neutral-500 dark:text-neutral-400">
+                        {item.totalQuantity} sold (Rs. {item.totalRevenue})
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-neutral-100 dark:bg-neutral-950 rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Profit vs Expense Overview */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Revenue vs Expenses Comparison</h2>
-          {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading financial overview...</div>
+        {/* Payment Breakdown Pie Chart */}
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">Payment Method Breakdown (Split Accurate)</h2>
+          {safePaymentData.length === 0 ? (
+            <p className="py-8 text-center text-neutral-400 italic">No payment breakdown available.</p>
           ) : (
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={profitLossBarData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value) => [`Rs. ${value}`, 'Amount']} />
-                  <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
-                    {profitLossBarData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Chart Section 4 & 5: Pie Chart Breakdowns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Order Type Breakdown */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Order Type Breakdown</h2>
-          {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading order types...</div>
-          ) : orderTypeData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400 italic">No orders in this period.</div>
-          ) : (
-            <div className="h-72 w-full flex items-center">
+            <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={orderTypeData}
-                    dataKey="count"
-                    nameKey="orderType"
+                    data={safePaymentData}
+                    dataKey="total"
+                    nameKey="_id"
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    label={(entry) => `${entry.orderType}: ${entry.percentage}%`}
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                   >
-                    {orderTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    {safePaymentData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value, name, props) => [`${value} orders (${props.payload.percentage}%)`, props.payload.orderType]} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-
-        {/* Payment Method Breakdown */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Payment Method Breakdown (Actual Cash vs Card)</h2>
-          {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading payment breakdown...</div>
-          ) : paymentData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400 italic">No payments recorded.</div>
-          ) : (
-            <div className="h-72 w-full flex items-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={paymentData}
-                    dataKey="totalAmount"
-                    nameKey="method"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={45}
-                    outerRadius={80}
-                    label={(entry) => `${entry.method}: Rs.${entry.totalAmount}`}
-                  >
-                    {paymentData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[(index + 2) % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value, name, props) => [`Rs. ${value} (${props.payload.percentage}%)`, props.payload.method]} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#171717',
+                      borderColor: '#404040',
+                      borderRadius: '12px',
+                      color: '#fff',
+                    }}
+                  />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>

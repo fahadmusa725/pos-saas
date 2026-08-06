@@ -23,6 +23,7 @@ const DEFAULT_ROLE_PERMISSIONS = {
   cashier: ['orders', 'tables', 'customers'],
   waiter: ['orders', 'tables', 'kds'],
   kitchen: ['kds'],
+  manager: APP_MODULES.filter((m) => m.id !== 'staff').map((m) => m.id),
   // restaurant-admin always gets all modules automatically
   'restaurant-admin': APP_MODULES.map((m) => m.id),
 };

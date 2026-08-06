@@ -3,11 +3,11 @@ import toast from 'react-hot-toast';
 import api from '../services/api';
 import { APP_MODULES, DEFAULT_ROLE_PERMISSIONS } from '../config/modules';
 import ConfirmModal from '../components/ConfirmModal';
+import { Users, UserPlus, Shield, Key, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
 function Staff() {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
 
@@ -39,7 +39,7 @@ function Staff() {
         setStaffList(res.data.data);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch staff members');
+      toast.error(err.response?.data?.message || 'Failed to fetch staff members');
     } finally {
       setLoading(false);
     }
@@ -178,12 +178,13 @@ function Staff() {
 
   const getRoleBadge = (role) => {
     const styles = {
-      cashier: 'bg-green-100 text-green-800 border-green-200',
-      waiter: 'bg-blue-100 text-blue-800 border-blue-200',
-      kitchen: 'bg-amber-100 text-amber-800 border-amber-200',
+      cashier: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+      waiter:  'bg-blue-500/10 text-blue-500 border-blue-500/20',
+      kitchen: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+      manager: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
     };
     return (
-      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border capitalize ${styles[role] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border uppercase tracking-wider ${styles[role] || 'bg-neutral-500/10 text-neutral-500'}`}>
         {role}
       </span>
     );
@@ -191,64 +192,63 @@ function Staff() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Staff Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage staff roles, granular permissions, and performance tracking</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
+            Staff Management
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            Manage staff credentials, granular permissions, and activity status
+          </p>
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition text-sm flex items-center gap-2"
+          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-neutral-950 font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 text-sm"
         >
-          + Add Staff Member
+          <UserPlus className="w-4 h-4" />
+          <span>Add Staff Member</span>
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
-
       {/* Staff Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading staff members...</div>
-        ) : staffList.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="text-gray-500 font-medium">No staff members found.</p>
-            <p className="text-sm text-gray-400 mt-1">Add cashiers, waiters, or kitchen staff to get started.</p>
+          <div className="p-6 space-y-3">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="h-12 bg-neutral-100 dark:bg-neutral-800 rounded-lg animate-pulse" />
+            ))}
           </div>
+        ) : staffList.length === 0 ? (
+          <div className="p-12 text-center text-neutral-400 italic">No staff members created yet.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="bg-gray-50 text-gray-600 text-xs uppercase font-semibold border-b border-gray-200">
-                  <th className="py-3 px-4">Staff Member</th>
-                  <th className="py-3 px-4">Role</th>
-                  <th className="py-3 px-4">Assigned Modules</th>
-                  <th className="py-3 px-4">Orders Handled</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
+                  <th className="px-6 py-3.5">Staff Member</th>
+                  <th className="px-6 py-3.5">Role</th>
+                  <th className="px-6 py-3.5">Permissions</th>
+                  <th className="px-6 py-3.5">Orders Handled</th>
+                  <th className="px-6 py-3.5">Status</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-sm">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
                 {staffList.map((member) => (
-                  <tr key={member._id} className="hover:bg-gray-50/50 transition">
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-gray-900">{member.name}</div>
-                      <div className="text-xs text-gray-500">{member.email}</div>
+                  <tr key={member._id} className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-neutral-900 dark:text-white">{member.name}</div>
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400">{member.email}</div>
                     </td>
-                    <td className="py-3.5 px-4">{getRoleBadge(member.role)}</td>
-                    <td className="py-3.5 px-4">
+                    <td className="px-6 py-4">{getRoleBadge(member.role)}</td>
+                    <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1 max-w-xs">
                         {(member.permissions || []).map((permId) => {
                           const moduleObj = APP_MODULES.find((m) => m.id === permId);
                           return (
                             <span
                               key={permId}
-                              className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[11px] font-medium border border-gray-200"
+                              className="bg-neutral-100 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-300 px-2 py-0.5 rounded-md text-[11px] font-medium border border-neutral-200 dark:border-neutral-800"
                             >
                               {moduleObj ? moduleObj.name : permId}
                             </span>
@@ -256,34 +256,36 @@ function Staff() {
                         })}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 font-medium text-gray-700">
+                    <td className="px-6 py-4 font-bold text-neutral-900 dark:text-white">
                       {member.ordersCount} {member.ordersCount === 1 ? 'order' : 'orders'}
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="px-6 py-4">
                       <button
                         onClick={() => handleToggleStatus(member._id)}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition ${
                           member.isActive
-                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                            : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20'
+                            : 'bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500/20'
                         }`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${member.isActive ? 'bg-emerald-600' : 'bg-rose-600'}`}></span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${member.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                         {member.isActive ? 'Active' : 'Deactivated'}
                       </button>
                     </td>
-                    <td className="py-3.5 px-4 text-right space-x-2">
+                    <td className="px-6 py-4 text-right space-x-1">
                       <button
                         onClick={() => handleOpenModal(member)}
-                        className="text-blue-600 hover:text-blue-800 font-medium text-xs px-2 py-1 rounded hover:bg-blue-50 transition"
+                        className="p-2 text-amber-500 hover:bg-amber-500/10 rounded-lg transition"
+                        title="Edit Staff"
                       >
-                        Edit
+                        <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => confirmDelete(member._id)}
-                        className="text-red-600 hover:text-red-800 font-medium text-xs px-2 py-1 rounded hover:bg-red-50 transition"
+                        className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition"
+                        title="Delete Staff"
                       >
-                        Delete
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
@@ -296,137 +298,110 @@ function Staff() {
 
       {/* Add / Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl space-y-4 my-8">
-            <h2 className="text-xl font-bold text-gray-900">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-8">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
               {editingStaff ? 'Edit Staff Member' : 'Add New Staff Member'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Full Name</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
+                  Full Name *
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Rahul Verma"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Email Address</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
+                  Email Address *
+                </label>
                 <input
                   type="email"
                   required
-                  placeholder="staff@restaurant.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Base Role</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
+                  Role *
+                </label>
                 <select
                   value={formData.role}
                   onChange={(e) => handleRoleChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none capitalize"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 >
+                  <option value="manager">Manager</option>
                   <option value="cashier">Cashier</option>
                   <option value="waiter">Waiter</option>
                   <option value="kitchen">Kitchen Staff</option>
                 </select>
               </div>
 
-              {/* Granular Permissions Checklist */}
-              <div className="border border-gray-200 rounded-lg p-3 bg-gray-50/50 space-y-2">
-                <label className="block text-xs font-bold text-gray-800 uppercase">
-                  Module Permissions Checklist
-                </label>
-                <p className="text-xs text-gray-500">
-                  Select which modules this staff member can access:
-                </p>
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  {APP_MODULES.map((module) => {
-                    const isChecked = (formData.permissions || []).includes(module.id);
-                    return (
-                      <label
-                        key={module.id}
-                        className={`flex items-center gap-2 p-2 rounded border text-xs cursor-pointer transition ${
-                          isChecked
-                            ? 'bg-blue-50 border-blue-300 text-blue-900 font-semibold'
-                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handlePermissionToggle(module.id)}
-                          className="rounded text-blue-600 focus:ring-blue-500"
-                        />
-                        <span>{module.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
               {!editingStaff && (
-                <div className="space-y-2 border-t pt-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-gray-700 uppercase">Password Creation</label>
-                    <label className="text-xs text-blue-600 flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.autoGeneratePassword}
-                        onChange={(e) => setFormData({ ...formData, autoGeneratePassword: e.target.checked })}
-                        className="rounded text-blue-600"
-                      />
-                      Auto-generate
-                    </label>
-                  </div>
+                <div className="space-y-2 pt-1">
+                  <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+                    <input
+                      type="checkbox"
+                      checked={formData.autoGeneratePassword}
+                      onChange={(e) => setFormData({ ...formData, autoGeneratePassword: e.target.checked })}
+                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500"
+                    />
+                    <span>Auto-generate secure password</span>
+                  </label>
                   {!formData.autoGeneratePassword && (
                     <input
                       type="password"
-                      required={!formData.autoGeneratePassword}
-                      minLength={6}
-                      placeholder="Enter password (min 6 chars)"
+                      placeholder="Enter custom password"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                     />
                   )}
                 </div>
               )}
 
-              {editingStaff && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Reset Password (Optional)</label>
-                  <input
-                    type="password"
-                    minLength={6}
-                    placeholder="Leave blank to keep unchanged"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
+              {/* Module Permissions Checkboxes */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
+                  Module Permissions
+                </label>
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl">
+                  {APP_MODULES.filter((m) => m.id !== 'staff').map((m) => (
+                    <label key={m.id} className="flex items-center gap-2 text-xs text-neutral-700 dark:text-neutral-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={(formData.permissions || []).includes(m.id)}
+                        onChange={() => handlePermissionToggle(m.id)}
+                        className="w-3.5 h-3.5 rounded text-amber-500 focus:ring-amber-500"
+                      />
+                      <span>{m.name}</span>
+                    </label>
+                  ))}
                 </div>
-              )}
+              </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t">
+              <div className="flex justify-end gap-2 pt-4 border-t border-neutral-200 dark:border-neutral-800">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition"
+                  className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition"
+                  className="px-5 py-2 text-sm font-bold bg-amber-500 hover:bg-amber-600 text-neutral-950 rounded-xl transition"
                 >
-                  {editingStaff ? 'Update Member' : 'Create Staff'}
+                  {editingStaff ? 'Save Changes' : 'Create Staff Member'}
                 </button>
               </div>
             </form>
@@ -434,29 +409,25 @@ function Staff() {
         </div>
       )}
 
-      {/* Generated Password Modal */}
+      {/* Generated Password Result Modal */}
       {createdPasswordModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl text-center space-y-4">
-            <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
-              ✓
-            </div>
-            <h3 className="text-lg font-bold text-gray-900">Staff Created Successfully!</h3>
-            <p className="text-xs text-gray-500">Please share these login credentials with the staff member:</p>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-left space-y-1 font-mono text-sm">
-              <div><span className="text-gray-500 text-xs">Email:</span> {createdPasswordModal.email}</div>
-              <div><span className="text-gray-500 text-xs">Password:</span> <span className="font-bold text-blue-600">{createdPasswordModal.password}</span></div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-sm w-full p-6 text-center space-y-3">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Credentials Created</h3>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">Save password for login:</p>
+            <div className="p-3 bg-neutral-100 dark:bg-neutral-950 font-mono text-sm rounded-xl font-bold text-amber-500 border border-neutral-200 dark:border-neutral-800">
+              {createdPasswordModal.password}
             </div>
             <button
               onClick={() => setCreatedPasswordModal(null)}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition"
+              className="w-full py-2 bg-amber-500 font-bold text-neutral-950 rounded-xl text-sm"
             >
-              Done / Copied
+              Done
             </button>
           </div>
         </div>
       )}
-      {/* Confirm Delete Modal */}
+
       <ConfirmModal
         isOpen={confirmOpen}
         title="Delete Staff Member?"
@@ -464,7 +435,10 @@ function Staff() {
         confirmLabel="Delete"
         variant="danger"
         onConfirm={handleDelete}
-        onCancel={() => { setConfirmOpen(false); setDeleteTargetId(null); }}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setDeleteTargetId(null);
+        }}
       />
     </div>
   );

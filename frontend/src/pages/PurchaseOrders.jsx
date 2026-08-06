@@ -1,21 +1,18 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import { ClipboardList, Plus, CheckCircle, XCircle, Trash2, Package } from 'lucide-react';
 
 function PurchaseOrders() {
-  const [orders, setOrders]             = useState([]);
-  const [suppliers, setSuppliers]       = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [suppliers, setSuppliers]           = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [submitting, setSubmitting]     = useState(false);
-  const [receivingId, setReceivingId]   = useState(null); // Track specific PO being received
-  const [error, setError]             = useState('');
-  const [formError, setFormError]     = useState('');
+  const [loading, setLoading]               = useState(true);
+  const [submitting, setSubmitting]         = useState(false);
+  const [receivingId, setReceivingId]       = useState(null);
 
-  // Form toggle & state
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [supplierId, setSupplierId]         = useState('');
-  const [purchaseDate, setPurchaseDate]     = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes]                   = useState('');
   const [poItems, setPoItems]               = useState([
     { inventoryItemId: '', quantity: 1, costPerUnit: 0 },
@@ -23,17 +20,16 @@ function PurchaseOrders() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [ordersRes, suppliersRes, invRes] = await Promise.allSettled([
+      const [poRes, supRes, invRes] = await Promise.allSettled([
         api.get('/purchase-orders'),
         api.get('/suppliers'),
         api.get('/inventory'),
       ]);
-
-      if (ordersRes.status === 'fulfilled') setOrders(ordersRes.value.data.data);
-      if (suppliersRes.status === 'fulfilled') setSuppliers(suppliersRes.value.data.data);
+      if (poRes.status === 'fulfilled')  setPurchaseOrders(poRes.value.data.data);
+      if (supRes.status === 'fulfilled') setSuppliers(supRes.value.data.data);
       if (invRes.status === 'fulfilled') setInventoryItems(invRes.value.data.data);
     } catch (err) {
-      setError('Failed to load purchase orders');
+      toast.error('Failed to load purchase orders');
     } finally {
       setLoading(false);
     }
@@ -43,40 +39,38 @@ function PurchaseOrders() {
     fetchData();
   }, [fetchData]);
 
-  // PO Items manipulation
+  const handleAddItemRow = () => {
+    setPoItems([...poItems, { inventoryItemId: '', quantity: 1, costPerUnit: 0 }]);
+  };
+
+  const handleRemoveItemRow = (index) => {
+    if (poItems.length === 1) return;
+    setPoItems(poItems.filter((_, i) => i !== index));
+  };
+
   const handleItemChange = (index, field, value) => {
     const updated = [...poItems];
     updated[index][field] = value;
 
     if (field === 'inventoryItemId') {
-      const selectedInv = inventoryItems.find((i) => i._id === value);
-      if (selectedInv) {
-        updated[index].costPerUnit = selectedInv.costPerUnit || 0;
+      const selected = inventoryItems.find((item) => item._id === value);
+      if (selected && selected.costPerUnit) {
+        updated[index].costPerUnit = selected.costPerUnit;
       }
     }
     setPoItems(updated);
   };
 
-  const addItemRow = () => {
-    setPoItems([...poItems, { inventoryItemId: '', quantity: 1, costPerUnit: 0 }]);
+  const calculateTotal = () => {
+    return poItems.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.costPerUnit) || 0), 0);
   };
-
-  const removeItemRow = (index) => {
-    setPoItems(poItems.filter((_, i) => i !== index));
-  };
-
-  const grandTotal = poItems.reduce((sum, item) => {
-    const qty = Number(item.quantity) || 0;
-    const cost = Number(item.costPerUnit) || 0;
-    return sum + qty * cost;
-  }, 0);
 
   const handleCreateOrder = async (e) => {
     e.preventDefault();
-    setFormError('');
 
-    if (poItems.some((i) => !i.inventoryItemId)) {
-      setFormError('Please select an inventory item for all rows.');
+    const validItems = poItems.filter((i) => i.inventoryItemId && i.quantity > 0);
+    if (validItems.length === 0) {
+      toast.error('Please add at least one valid inventory item');
       return;
     }
 
@@ -84,9 +78,12 @@ function PurchaseOrders() {
     try {
       await api.post('/purchase-orders', {
         supplierId: supplierId || undefined,
-        purchaseDate,
-        items: poItems,
         notes,
+        items: validItems.map((i) => ({
+          inventoryItemId: i.inventoryItemId,
+          quantity: Number(i.quantity),
+          costPerUnit: Number(i.costPerUnit),
+        })),
       });
 
       setShowCreateForm(false);
@@ -97,15 +94,13 @@ function PurchaseOrders() {
       toast.success('Purchase order created!');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create purchase order');
-      setFormError(err.response?.data?.message || 'Failed to create purchase order');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Immediate disable/loading state on Mark Received to prevent double clicks
   const handleStatusUpdate = async (id, status) => {
-    if (receivingId) return; // Guard against multiple triggers
+    if (receivingId) return;
     setReceivingId(id);
     try {
       await api.put(`/purchase-orders/${id}/status`, { status });
@@ -119,43 +114,44 @@ function PurchaseOrders() {
   };
 
   const STATUS_BADGES = {
-    pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    received: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    cancelled: 'bg-red-100 text-red-800 border-red-200',
+    pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+    received: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    cancelled: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Purchase Orders</h1>
-          <p className="text-xs text-gray-500 mt-1">Track purchases & auto-update inventory stock</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
+            Purchase Orders
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            Create supplier orders & auto-increment inventory stock on receiving
+          </p>
         </div>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition"
+          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-neutral-950 font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 text-sm"
         >
-          {showCreateForm ? 'Close Form' : '+ Create Purchase Order'}
+          <Plus className="w-4 h-4" />
+          <span>{showCreateForm ? 'Close Form' : 'Create Purchase Order'}</span>
         </button>
       </div>
 
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-sm mb-4">{error}</div>}
-
-      {/* ── Create Form ── */}
+      {/* Create Form */}
       {showCreateForm && (
-        <div className="bg-white rounded-xl shadow p-6 mb-6 border border-blue-100">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">New Purchase Order</h2>
-
-          {formError && <div className="bg-red-50 text-red-700 text-xs p-3 rounded-lg mb-4">{formError}</div>}
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-white">New Purchase Order</h2>
 
           <form onSubmit={handleCreateOrder} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Supplier (Optional)</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Supplier (Optional)</label>
                 <select
                   value={supplierId}
                   onChange={(e) => setSupplierId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 >
                   <option value="">Select Supplier</option>
                   {suppliers.map((s) => (
@@ -165,118 +161,81 @@ function PurchaseOrders() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Purchase Date</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Notes</label>
                 <input
-                  type="date"
-                  value={purchaseDate}
-                  onChange={(e) => setPurchaseDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  type="text"
+                  placeholder="e.g. Urgent delivery"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
             </div>
 
-            {/* Item Rows */}
-            <div className="space-y-2 pt-2">
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">Purchase Items</label>
+            {/* Dynamic Items Array */}
+            <div className="space-y-3 pt-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Order Items *</label>
+              {poItems.map((item, index) => (
+                <div key={index} className="flex gap-2 items-center flex-wrap sm:flex-nowrap p-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl">
+                  <select
+                    value={item.inventoryItemId}
+                    onChange={(e) => handleItemChange(index, 'inventoryItemId', e.target.value)}
+                    required
+                    className="flex-1 min-w-[180px] px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs text-neutral-900 dark:text-neutral-100"
+                  >
+                    <option value="">Select Item</option>
+                    {inventoryItems.map((inv) => (
+                      <option key={inv._id} value={inv._id}>
+                        {inv.name} ({inv.unit})
+                      </option>
+                    ))}
+                  </select>
 
-              {poItems.map((item, index) => {
-                const invItem = inventoryItems.find((i) => i._id === item.inventoryItemId);
-                return (
-                  <div key={index} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-gray-50 p-2.5 rounded-lg border border-gray-200">
-                    <select
-                      required
-                      value={item.inventoryItemId}
-                      onChange={(e) => handleItemChange(index, 'inventoryItemId', e.target.value)}
-                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select Inventory Item</option>
-                      {inventoryItems.map((inv) => (
-                        <option key={inv._id} value={inv._id}>
-                          {inv.name} ({inv.unit}) — Stock: {inv.currentStock}
-                        </option>
-                      ))}
-                    </select>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Qty"
+                    value={item.quantity}
+                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                    className="w-20 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs"
+                  />
 
-                    <div className="w-24">
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="any"
-                        required
-                        placeholder="Qty"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Cost/Unit"
+                    value={item.costPerUnit}
+                    onChange={(e) => handleItemChange(index, 'costPerUnit', e.target.value)}
+                    className="w-28 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs"
+                  />
 
-                    <div className="w-32">
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        required
-                        placeholder="Cost/Unit"
-                        value={item.costPerUnit}
-                        onChange={(e) => handleItemChange(index, 'costPerUnit', e.target.value)}
-                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div className="w-28 text-right font-semibold text-xs text-gray-800">
-                      Rs. {(Number(item.quantity || 0) * Number(item.costPerUnit || 0)).toFixed(2)}
-                    </div>
-
-                    {poItems.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItemRow(index)}
-                        className="text-red-500 hover:text-red-700 px-2 py-1 text-xs font-bold"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-
-              <div className="flex justify-between items-center pt-2">
-                <button
-                  type="button"
-                  onClick={addItemRow}
-                  className="text-xs text-blue-600 font-semibold hover:underline"
-                >
-                  + Add Item Row
-                </button>
-                <div className="text-sm font-bold text-gray-900">
-                  Total Cost: <span className="text-blue-600">Rs. {grandTotal.toFixed(2)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItemRow(index)}
+                    disabled={poItems.length === 1}
+                    className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg disabled:opacity-30"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-              </div>
-            </div>
+              ))}
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Notes (Optional)</label>
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g. Invoice #1024, Paid via Bank Transfer"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t">
               <button
                 type="button"
-                onClick={() => setShowCreateForm(false)}
-                className="px-4 py-2 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100"
+                onClick={handleAddItemRow}
+                className="text-xs font-bold text-amber-500 hover:underline flex items-center gap-1"
               >
-                Cancel
+                <Plus className="w-3.5 h-3.5" />
+                Add Another Item
               </button>
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t border-neutral-200 dark:border-neutral-800">
+              <span className="text-base font-extrabold text-amber-500">Total: Rs. {calculateTotal()}</span>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold rounded-xl text-sm transition disabled:opacity-50"
               >
                 {submitting ? 'Creating...' : 'Submit Purchase Order'}
               </button>
@@ -285,66 +244,66 @@ function PurchaseOrders() {
         </div>
       )}
 
-      {/* PO List */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      {/* PO Table */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
-          <p className="p-6 text-gray-500">Loading purchase orders...</p>
-        ) : orders.length === 0 ? (
-          <p className="p-6 text-gray-400 italic">No purchase orders found.</p>
+          <div className="p-6 space-y-3">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="h-12 bg-neutral-100 dark:bg-neutral-800 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : purchaseOrders.length === 0 ? (
+          <div className="p-12 text-center text-neutral-400 italic">No purchase orders created yet.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Supplier</th>
-                  <th className="px-5 py-3">Items</th>
-                  <th className="px-5 py-3">Total Cost</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
+                  <th className="px-6 py-3.5">PO #</th>
+                  <th className="px-6 py-3.5">Supplier</th>
+                  <th className="px-6 py-3.5">Items</th>
+                  <th className="px-6 py-3.5">Total Cost</th>
+                  <th className="px-6 py-3.5">Status</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {orders.map((po) => (
-                  <tr key={po._id} className="hover:bg-gray-50 transition">
-                    <td className="px-5 py-3 font-medium text-gray-800">
-                      {new Date(po.purchaseDate).toLocaleDateString()}
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
+                {purchaseOrders.map((po) => (
+                  <tr key={po._id} className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors">
+                    <td className="px-6 py-4 font-mono font-bold text-amber-500">#{po.poNumber}</td>
+                    <td className="px-6 py-4 font-bold text-neutral-900 dark:text-white">
+                      {po.supplierId?.name || 'Direct Order'}
                     </td>
-                    <td className="px-5 py-3 text-gray-600">
-                      {po.supplierId?.name || '—'}
+                    <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">
+                      {po.items.map((i) => `${i.inventoryItemId?.name || 'Item'} (${i.quantity})`).join(', ')}
                     </td>
-                    <td className="px-5 py-3 text-xs text-gray-500">
-                      {po.items.map((i) => `${i.itemName} (${i.quantity})`).join(', ')}
-                    </td>
-                    <td className="px-5 py-3 font-bold text-gray-900">
-                      Rs. {po.totalCost}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${STATUS_BADGES[po.status]}`}>
+                    <td className="px-6 py-4 font-extrabold text-neutral-900 dark:text-white">Rs. {po.totalCost}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${STATUS_BADGES[po.status]}`}>
                         {po.status}
                       </span>
                     </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-2">
-                        {po.status === 'pending' && (
-                          <>
-                            <button
-                              disabled={receivingId === po._id}
-                              onClick={() => handleStatusUpdate(po._id, 'received')}
-                              className="text-xs px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition disabled:opacity-50 flex items-center gap-1"
-                            >
-                              {receivingId === po._id ? 'Processing...' : '✓ Mark Received'}
-                            </button>
-                            <button
-                              disabled={receivingId === po._id}
-                              onClick={() => handleStatusUpdate(po._id, 'cancelled')}
-                              className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium rounded-lg transition disabled:opacity-50"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        )}
-                      </div>
+                    <td className="px-6 py-4 text-right space-x-2">
+                      {po.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleStatusUpdate(po._id, 'received')}
+                            disabled={receivingId === po._id}
+                            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition disabled:opacity-50 inline-flex items-center gap-1"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            {receivingId === po._id ? 'Receiving...' : 'Mark Received'}
+                          </button>
+                          <button
+                            onClick={() => handleStatusUpdate(po._id, 'cancelled')}
+                            disabled={receivingId === po._id}
+                            className="px-3 py-1.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg text-xs font-bold transition inline-flex items-center gap-1"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            Cancel
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -1,246 +1,119 @@
-import { useRef } from 'react';
+import { Printer, CheckCircle, X } from 'lucide-react';
 
-function ReceiptModal({ order, restaurantName, isOpen, onClose }) {
-  const printRef = useRef();
-
-  if (!isOpen || !order) return null;
+function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
+  if (!order) return null;
 
   const handlePrint = () => {
-    const printContents = printRef.current.innerHTML;
-    const originalBody = document.body.innerHTML;
-    document.body.innerHTML = `
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Share Tech Mono', 'Courier New', monospace; font-size: 11px; width: 80mm; color: #000; }
-        .receipt-container { padding: 6mm; }
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .font-bold { font-weight: bold; }
-        .divider { border-top: 1px dashed #000; margin: 4px 0; }
-        .row { display: flex; justify-content: space-between; }
-        .section { margin: 4px 0; }
-        .big { font-size: 13px; font-weight: bold; }
-        .small { font-size: 10px; }
-      </style>
-      <div class="receipt-container">${printContents}</div>
-    `;
     window.print();
-    document.body.innerHTML = originalBody;
-    window.location.reload();
   };
 
-  const orderDate = new Date(order.createdAt);
-  const printDate = new Date();
-
-  // Payment method display
-  const paymentLabel = order.paymentBreakdown?.length > 1
-    ? 'Split'
-    : order.paymentMethod?.charAt(0).toUpperCase() + order.paymentMethod?.slice(1) || 'Cash';
-
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl my-8">
-        {/* Toolbar */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-base font-bold text-gray-900">Receipt Preview</h2>
-          <div className="flex gap-2">
-            <button
-              onClick={handlePrint}
-              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition"
-            >
-              🖨️ Print Receipt
-            </button>
-            <button
-              onClick={onClose}
-              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold rounded-lg transition"
-            >
-              ✕ Close
-            </button>
-          </div>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        {/* Actions bar (hidden in print) */}
+        <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 pb-3 print:hidden">
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-500 flex items-center gap-1">
+            <CheckCircle className="w-4 h-4" /> Payment Completed
+          </span>
+          <button onClick={onClose} className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 rounded">
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Thermal Receipt Preview */}
-        <div
-          ref={printRef}
-          className="bg-white border border-dashed border-gray-300 rounded-xl p-5 font-mono text-xs leading-relaxed text-gray-900"
-          style={{ fontFamily: "'Share Tech Mono', 'Courier New', monospace", fontSize: '11px' }}
-        >
-          {/* Restaurant Header */}
-          <div className="text-center mb-3">
-            <div className="font-bold text-sm tracking-widest uppercase">{restaurantName || 'Restaurant'}</div>
-            <div className="text-xs text-gray-500 mt-0.5">Point of Sale — Thermal Receipt</div>
+        {/* Receipt Printable Card */}
+        <div className="bg-white text-neutral-900 p-4 rounded-xl border border-neutral-200 space-y-4 font-mono text-xs shadow-inner">
+          <div className="text-center space-y-1">
+            <h2 className="text-base font-extrabold tracking-tight text-neutral-900 uppercase">{restaurantName}</h2>
+            <p className="text-[11px] text-neutral-500">Official Bill / Receipt</p>
+            <p className="text-[10px] text-neutral-400">Order #{order.orderNumber} • {new Date(order.createdAt || Date.now()).toLocaleString()}</p>
           </div>
 
-          <div className="border-t border-dashed border-gray-400 my-2" />
-
-          {/* Order Info */}
-          <div className="space-y-0.5 text-xs">
-            <div className="flex justify-between">
-              <span>Order #:</span>
-              <span className="font-bold">{order.orderNumber}</span>
+          <div className="border-t border-b border-dashed border-neutral-300 py-2 space-y-1">
+            <div className="flex justify-between text-[11px] font-bold">
+              <span>Type: {order.orderType?.toUpperCase()}</span>
+              <span>{order.tableId ? `Table ${order.tableId.tableNumber}` : ''}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Type:</span>
-              <span className="capitalize">{order.orderType}</span>
-            </div>
-            {order.tableId?.tableNumber && (
-              <div className="flex justify-between">
-                <span>Table:</span>
-                <span>{order.tableId.tableNumber}</span>
-              </div>
+            {order.customerId && (
+              <div className="text-[10px] text-neutral-600">Customer: {order.customerId.name} ({order.customerId.phone})</div>
             )}
-            <div className="flex justify-between">
-              <span>Date:</span>
-              <span>{orderDate.toLocaleDateString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Time:</span>
-              <span>{orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Printed:</span>
-              <span>{printDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
           </div>
 
-          <div className="border-t border-dashed border-gray-400 my-2" />
-
-          {/* Items Header */}
-          <div className="flex justify-between text-xs font-bold mb-1">
-            <span className="flex-1">ITEM</span>
-            <span className="w-8 text-center">QTY</span>
-            <span className="w-14 text-right">PRICE</span>
-            <span className="w-14 text-right">TOTAL</span>
-          </div>
-          <div className="border-t border-dashed border-gray-400 mb-2" />
-
-          {/* Items */}
-          {order.items?.map((item, i) => {
-            const hasItemDiscount = item.itemDiscount && item.itemDiscount.value > 0;
-            const originalUnitPrice = item.price;
-            let discountedUnitPrice = originalUnitPrice;
-
-            if (hasItemDiscount) {
-              if (item.itemDiscount.discountType === 'percentage') {
-                discountedUnitPrice = originalUnitPrice * (1 - item.itemDiscount.value / 100);
-              } else {
-                discountedUnitPrice = Math.max(0, originalUnitPrice - item.itemDiscount.value);
-              }
-            }
-
-            const itemLineTotal = discountedUnitPrice * item.quantity;
-
-            return (
-              <div key={i} className="mb-1">
-                <div className="flex justify-between items-start text-xs">
-                  <span className="flex-1 pr-1 leading-tight">{item.name}</span>
-                  <span className="w-8 text-center">{item.quantity}</span>
-                  <span className="w-16 text-right">
-                    {hasItemDiscount ? (
-                      <>
-                        <s className="text-gray-400 text-[10px]">Rs.{originalUnitPrice}</s>{' '}
-                        <span>Rs.{discountedUnitPrice.toFixed(0)}</span>
-                      </>
-                    ) : (
-                      `Rs.${originalUnitPrice}`
+          {/* Items Table */}
+          <div className="space-y-1.5">
+            {order.items?.map((item, idx) => {
+              const hasDisc = item.itemDiscount && item.itemDiscount.value > 0;
+              return (
+                <div key={idx} className="flex justify-between items-start text-[11px]">
+                  <div className="flex-1 pr-2">
+                    <div>{item.name} × {item.quantity}</div>
+                    {hasDisc && (
+                      <div className="text-[9px] text-neutral-400">
+                        Disc: {item.itemDiscount.discountType === 'percentage' ? `${item.itemDiscount.value}%` : `Rs.${item.itemDiscount.value}`}
+                      </div>
                     )}
-                  </span>
-                  <span className="w-14 text-right">Rs.{itemLineTotal.toFixed(0)}</span>
-                </div>
-                {/* Add-ons if any */}
-                {item.addOns?.map((a, ai) => (
-                  <div key={ai} className="text-xs text-gray-500 pl-2">
-                    + {a.name} Rs.{a.price}
                   </div>
-                ))}
+                  <div className="text-right">
+                    {hasDisc && <s className="text-neutral-400 text-[9px]">Rs. {item.price * item.quantity}</s>}
+                    <div className="font-bold">Rs. {item.itemNetTotal !== undefined ? item.itemNetTotal : item.price * item.quantity}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Totals Breakdown */}
+          <div className="border-t border-dashed border-neutral-300 pt-2 space-y-1">
+            {order.couponDiscount > 0 && (
+              <div className="flex justify-between text-[10px] text-emerald-600">
+                <span>Coupon Discount ({order.couponCode})</span>
+                <span>-Rs. {order.couponDiscount}</span>
               </div>
-            );
-          })}
-
-          <div className="border-t border-dashed border-gray-400 my-2" />
-
-          {/* Totals */}
-          <div className="space-y-0.5 text-xs">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span>Rs. {order.subtotal || order.total}</span>
+            )}
+            <div className="flex justify-between font-extrabold text-sm pt-1 border-t border-neutral-200">
+              <span>TOTAL PAID</span>
+              <span>Rs. {order.total}</span>
             </div>
-            {order.tax > 0 && (
-              <div className="flex justify-between">
-                <span>Tax:</span>
-                <span>Rs. {order.tax}</span>
-              </div>
-            )}
-            {order.discount > 0 && (
-              <div className="flex justify-between font-semibold text-emerald-800">
-                <span>Coupon Discount:</span>
-                <span>- Rs. {order.discount}</span>
-              </div>
-            )}
           </div>
 
-          <div className="border-t border-dashed border-gray-400 my-2" />
-
-          <div className="flex justify-between text-sm font-bold">
-            <span>TOTAL:</span>
-            <span>Rs. {order.total}</span>
-          </div>
-
-          {/* Payment Breakdown */}
-          <div className="border-t border-dashed border-gray-400 my-2" />
-          <div className="text-xs font-bold mb-1">PAYMENT</div>
-
-          {order.paymentBreakdown?.length > 1 ? (
-            <div className="space-y-0.5 text-xs">
+          {/* Split Payment Breakdown */}
+          {order.paymentBreakdown?.length > 0 && (
+            <div className="border-t border-dashed border-neutral-300 pt-2 text-[10px] space-y-0.5 text-neutral-600">
+              <div className="font-bold uppercase text-neutral-800">Payment Method(s):</div>
               {order.paymentBreakdown.map((p, i) => (
-                <div key={i} className="flex justify-between">
-                  <span className="capitalize">  {p.method}:</span>
+                <div key={i} className="flex justify-between uppercase">
+                  <span>• {p.paymentMethod}</span>
                   <span>Rs. {p.amount}</span>
                 </div>
               ))}
-            </div>
-          ) : (
-            <div className="flex justify-between text-xs">
-              <span>Method:</span>
-              <span className="font-semibold">{paymentLabel}</span>
-            </div>
-          )}
-
-          <div className="flex justify-between text-xs mt-1">
-            <span>Amount Paid:</span>
-            <span className="font-bold">Rs. {order.amountPaid || order.total}</span>
-          </div>
-
-          {order.changeAmount > 0 && (
-            <div className="flex justify-between text-xs text-emerald-700 font-bold">
-              <span>Change:</span>
-              <span>Rs. {order.changeAmount}</span>
+              {order.changeAmount > 0 && (
+                <div className="flex justify-between text-neutral-500 font-bold pt-1">
+                  <span>Change Given:</span>
+                  <span>Rs. {order.changeAmount}</span>
+                </div>
+              )}
             </div>
           )}
 
-          <div className="border-t border-dashed border-gray-400 my-2" />
-
-          {/* Payment Status */}
-          <div className="text-center text-xs">
-            {order.paymentStatus === 'paid' ? (
-              <span className="font-bold tracking-widest">✓ PAID — THANK YOU!</span>
-            ) : order.paymentStatus === 'partially_paid' ? (
-              <span className="font-bold text-orange-600">
-                PARTIAL PAYMENT — BALANCE: Rs. {order.total - (order.amountPaid || 0)}
-              </span>
-            ) : (
-              <span className="font-bold text-red-600">UNPAID</span>
-            )}
+          <div className="text-center pt-2 text-[10px] text-neutral-400">
+            Thank you for dining with us!
           </div>
+        </div>
 
-          <div className="border-t border-dashed border-gray-400 my-2" />
-
-          {/* Footer */}
-          <div className="text-center text-xs text-gray-500 space-y-0.5">
-            <div>Thank you for dining with us!</div>
-            <div>Visit us again 😊</div>
-          </div>
+        {/* Buttons */}
+        <div className="flex gap-2 pt-2 print:hidden">
+          <button
+            onClick={handlePrint}
+            className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Print Receipt</span>
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-bold rounded-xl text-xs transition"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

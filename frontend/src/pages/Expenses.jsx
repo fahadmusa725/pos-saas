@@ -2,16 +2,17 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import ConfirmModal from '../components/ConfirmModal';
+import { Receipt, Plus, Calendar, DollarSign, Filter, Edit2, Trash2 } from 'lucide-react';
 
 const CATEGORIES = ['rent', 'utilities', 'salaries', 'maintenance', 'supplies', 'other'];
 
 const CATEGORY_COLORS = {
-  rent: 'bg-purple-100 text-purple-800 border-purple-200',
-  utilities: 'bg-blue-100 text-blue-800 border-blue-200',
-  salaries: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  maintenance: 'bg-orange-100 text-orange-800 border-orange-200',
-  supplies: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  other: 'bg-gray-100 text-gray-800 border-gray-200',
+  rent:        'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  utilities:   'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  salaries:    'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  maintenance: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+  supplies:    'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  other:       'bg-neutral-500/10 text-neutral-500 border-neutral-500/20',
 };
 
 const EMPTY_FORM = {
@@ -26,10 +27,8 @@ function Expenses() {
   const [summary, setSummary]           = useState({ totalExpense: 0, byCategory: [] });
   const [loading, setLoading]           = useState(true);
   const [submitting, setSubmitting]     = useState(false);
-  const [error, setError]               = useState('');
-  const [formError, setFormError]       = useState('');
 
-  // Date filters (default current month)
+  // Date filters
   const now = new Date();
   const firstDayStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const todayStr = now.toISOString().split('T')[0];
@@ -57,7 +56,7 @@ function Expenses() {
       if (expRes.status === 'fulfilled') setExpenses(expRes.value.data.data);
       if (sumRes.status === 'fulfilled') setSummary(sumRes.value.data);
     } catch (err) {
-      setError('Failed to load expense data');
+      toast.error('Failed to load expense data');
     } finally {
       setLoading(false);
     }
@@ -70,7 +69,6 @@ function Expenses() {
   const openAdd = () => {
     setEditingId(null);
     setForm({ ...EMPTY_FORM, date: new Date().toISOString().split('T')[0] });
-    setFormError('');
     setShowModal(true);
   };
 
@@ -82,7 +80,6 @@ function Expenses() {
       date: new Date(expense.date).toISOString().split('T')[0],
       description: expense.description || '',
     });
-    setFormError('');
     setShowModal(true);
   };
 
@@ -90,12 +87,10 @@ function Expenses() {
     setShowModal(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
-    setFormError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
     setSubmitting(true);
     try {
       if (editingId) {
@@ -109,7 +104,6 @@ function Expenses() {
       fetchData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save expense');
-      setFormError(err.response?.data?.message || 'Failed to save expense');
     } finally {
       setSubmitting(false);
     }
@@ -128,108 +122,121 @@ function Expenses() {
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Expenses</h1>
-          <p className="text-xs text-gray-500 mt-1">Track operational costs & summaries</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
+            Expenses Tracking
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            Record operational costs, filter by date range, and view category summaries
+          </p>
         </div>
         <button
           onClick={openAdd}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition"
+          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-neutral-950 font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 text-sm"
         >
-          + Add Expense
+          <Plus className="w-4 h-4" />
+          <span>Record Expense</span>
         </button>
       </div>
 
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-sm mb-4">{error}</div>}
-
-      {/* Date Range Filter */}
-      <div className="bg-white rounded-xl shadow p-4 mb-6 flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-gray-700 uppercase">Filter Range:</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500"
-          />
-          <span className="text-xs text-gray-400">to</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div className="text-sm font-bold text-gray-800">
-          Total Range Expense: <span className="text-red-600">Rs. {summary.totalExpense || 0}</span>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
-        {CATEGORIES.map((cat) => {
-          const found = summary.byCategory?.find((c) => c._id === cat);
-          const total = found ? found.totalAmount : 0;
-          return (
-            <div key={cat} className="bg-white p-3 rounded-xl shadow border border-gray-100 text-center">
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[cat]}`}>
-                {cat}
-              </span>
-              <p className="text-base font-bold text-gray-900 mt-2">Rs. {total}</p>
+      {/* Date Filter & Summary Banner */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Filter className="w-4 h-4 text-amber-500" />
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold uppercase text-neutral-500">From:</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-3 py-1.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs text-neutral-900 dark:text-neutral-100"
+              />
             </div>
-          );
-        })}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold uppercase text-neutral-500">To:</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-3 py-1.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs text-neutral-900 dark:text-neutral-100"
+              />
+            </div>
+          </div>
+
+          <div className="text-right">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 block">Total Range Expense</span>
+            <span className="text-2xl font-extrabold text-amber-500">Rs. {summary.totalExpense || 0}</span>
+          </div>
+        </div>
+
+        {/* Category Breakdown Badges */}
+        {summary.byCategory && summary.byCategory.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            {summary.byCategory.map((cat) => (
+              <span
+                key={cat._id}
+                className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${CATEGORY_COLORS[cat._id] || CATEGORY_COLORS.other}`}
+              >
+                {cat._id}: Rs. {cat.total}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Expense Table */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      {/* Expenses Table */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
-          <p className="p-6 text-gray-500">Loading expenses...</p>
+          <div className="p-6 space-y-3">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="h-12 bg-neutral-100 dark:bg-neutral-800 rounded-lg animate-pulse" />
+            ))}
+          </div>
         ) : expenses.length === 0 ? (
-          <p className="p-6 text-gray-400 italic">No expenses found for selected range.</p>
+          <div className="p-12 text-center text-neutral-400 italic">No expenses recorded for selected period.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Category</th>
-                  <th className="px-5 py-3">Description</th>
-                  <th className="px-5 py-3">Amount</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
+                  <th className="px-6 py-3.5">Category</th>
+                  <th className="px-6 py-3.5">Amount</th>
+                  <th className="px-6 py-3.5">Date</th>
+                  <th className="px-6 py-3.5">Description</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {expenses.map((item) => (
-                  <tr key={item._id} className="hover:bg-gray-50 transition">
-                    <td className="px-5 py-3 text-gray-700 font-medium">
-                      {new Date(item.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${CATEGORY_COLORS[item.category]}`}>
-                        {item.category}
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
+                {expenses.map((exp) => (
+                  <tr key={exp._id} className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors">
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${CATEGORY_COLORS[exp.category] || CATEGORY_COLORS.other}`}>
+                        {exp.category}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-gray-600">{item.description || '—'}</td>
-                    <td className="px-5 py-3 font-bold text-red-600">Rs. {item.amount}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => openEdit(item)}
-                          className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(item._id)}
-                          className="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg transition"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                    <td className="px-6 py-4 font-extrabold text-neutral-900 dark:text-white">Rs. {exp.amount}</td>
+                    <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400 font-mono">
+                      {new Date(exp.date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">{exp.description || '—'}</td>
+                    <td className="px-6 py-4 text-right space-x-1">
+                      <button
+                        onClick={() => openEdit(exp)}
+                        className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition"
+                        title="Edit Expense"
+                      >
+                        <Edit2 className="w-4 h-4 inline" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(exp._id)}
+                        className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition"
+                        title="Delete Expense"
+                      >
+                        <Trash2 className="w-4 h-4 inline" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -239,77 +246,76 @@ function Expenses() {
         )}
       </div>
 
-      {/* Add / Edit Modal */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-bold text-gray-900">
-                {editingId ? 'Edit Expense' : 'Add Expense'}
-              </h2>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 font-bold text-lg px-2">✕</button>
-            </div>
-
-            {formError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-xs mb-4">{formError}</div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Category *</label>
-                  <select
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 capitalize"
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Amount (Rs.) *</label>
-                  <input
-                    required
-                    type="number"
-                    min="0.01"
-                    step="any"
-                    value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
+              {editingId ? 'Edit Expense' : 'Record New Expense'}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Category *</label>
+                <select
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none capitalize"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Date *</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Amount (PKR) *</label>
                 <input
+                  type="number"
                   required
+                  min="0.01"
+                  step="0.01"
+                  value={form.amount}
+                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Date *</label>
+                <input
                   type="date"
+                  required
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Description (Optional)</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Description</label>
                 <input
                   type="text"
+                  placeholder="Optional details"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="e.g. July Electricity Bill"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 border-t pt-4">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">
+              <div className="flex justify-end gap-2 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50">
-                  {submitting ? 'Saving...' : editingId ? 'Save Changes' : 'Add Expense'}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2 text-sm font-bold bg-amber-500 hover:bg-amber-600 text-neutral-950 rounded-xl transition"
+                >
+                  {submitting ? 'Saving...' : editingId ? 'Save Changes' : 'Record Expense'}
                 </button>
               </div>
             </form>

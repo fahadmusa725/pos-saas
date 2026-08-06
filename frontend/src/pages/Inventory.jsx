@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import ConfirmModal from '../components/ConfirmModal';
+import { Package, Plus, AlertTriangle, Edit2, Trash2 } from 'lucide-react';
 
 const UNITS = ['kg', 'litre', 'piece', 'dozen', 'box', 'pack', 'other'];
 
@@ -17,9 +18,6 @@ function Inventory() {
   const [items, setItems]             = useState([]);
   const [loading, setLoading]         = useState(true);
   const [submitting, setSubmitting]   = useState(false);
-  const [error, setError]             = useState('');
-  const [formError, setFormError]     = useState('');
-
   const [showModal, setShowModal]     = useState(false);
   const [editingId, setEditingId]     = useState(null);
   const [form, setForm]               = useState(EMPTY_FORM);
@@ -30,7 +28,7 @@ function Inventory() {
       const res = await api.get('/inventory');
       setItems(res.data.data);
     } catch (err) {
-      setError('Failed to load inventory items');
+      toast.error('Failed to load inventory items');
     } finally {
       setLoading(false);
     }
@@ -43,7 +41,6 @@ function Inventory() {
   const openAdd = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
-    setFormError('');
     setShowModal(true);
   };
 
@@ -56,7 +53,6 @@ function Inventory() {
       reorderLevel: item.reorderLevel,
       costPerUnit: item.costPerUnit,
     });
-    setFormError('');
     setShowModal(true);
   };
 
@@ -64,12 +60,10 @@ function Inventory() {
     setShowModal(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
-    setFormError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
     setSubmitting(true);
     try {
       if (editingId) {
@@ -83,7 +77,6 @@ function Inventory() {
       fetchItems();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save inventory item');
-      setFormError(err.response?.data?.message || 'Failed to save inventory item');
     } finally {
       setSubmitting(false);
     }
@@ -102,82 +95,98 @@ function Inventory() {
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Inventory Items</h1>
-          <p className="text-xs text-gray-500 mt-1">Manage stock levels & reorder alerts</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
+            Inventory & Stock
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            Track raw ingredients, unit costs, and reorder alerts
+          </p>
         </div>
         <button
           onClick={openAdd}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition"
+          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-neutral-950 font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 text-sm"
         >
-          + Add Inventory Item
+          <Plus className="w-4 h-4" />
+          <span>Add Stock Item</span>
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-sm mb-4">{error}</div>
-      )}
-
       {/* Inventory Table */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
-          <p className="p-6 text-gray-500">Loading inventory...</p>
+          <div className="p-6 space-y-3">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="h-12 bg-neutral-100 dark:bg-neutral-800 rounded-lg animate-pulse" />
+            ))}
+          </div>
         ) : items.length === 0 ? (
-          <p className="p-6 text-gray-400 italic">No inventory items found. Add your first item.</p>
+          <div className="p-12 text-center text-neutral-400 italic">No inventory items added yet.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="px-5 py-3">Item Name</th>
-                  <th className="px-5 py-3">Unit</th>
-                  <th className="px-5 py-3">Current Stock</th>
-                  <th className="px-5 py-3">Reorder Level</th>
-                  <th className="px-5 py-3">Cost / Unit</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
+                  <th className="px-6 py-3.5">Item Name</th>
+                  <th className="px-6 py-3.5">Current Stock</th>
+                  <th className="px-6 py-3.5">Reorder Level</th>
+                  <th className="px-6 py-3.5">Cost per Unit</th>
+                  <th className="px-6 py-3.5">Status</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
                 {items.map((item) => {
                   const isLow = item.currentStock <= item.reorderLevel;
                   return (
                     <tr
                       key={item._id}
-                      className={`hover:bg-gray-50 transition ${isLow ? 'bg-red-50/40 border-l-4 border-l-red-500' : ''}`}
+                      className={`hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors ${
+                        isLow ? 'bg-amber-500/5' : ''
+                      }`}
                     >
-                      <td className="px-5 py-3 font-semibold text-gray-800">
+                      <td className="px-6 py-4 font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+                        <Package className="w-4 h-4 text-amber-500" />
                         {item.name}
-                        {isLow && (
-                          <span className="ml-2 inline-block px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 rounded-full">
-                            LOW STOCK
+                      </td>
+                      <td className="px-6 py-4 font-bold text-neutral-900 dark:text-white">
+                        {item.currentStock} <span className="text-xs font-normal text-neutral-400">{item.unit}</span>
+                      </td>
+                      <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400">
+                        {item.reorderLevel} {item.unit}
+                      </td>
+                      <td className="px-6 py-4 font-extrabold text-neutral-900 dark:text-white">
+                        Rs. {item.costPerUnit}
+                      </td>
+                      <td className="px-6 py-4">
+                        {isLow ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            Low Stock
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                            In Stock
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-gray-600 capitalize">{item.unit}</td>
-                      <td className={`px-5 py-3 font-bold ${isLow ? 'text-red-600' : 'text-gray-800'}`}>
-                        {item.currentStock} {item.unit}
-                      </td>
-                      <td className="px-5 py-3 text-gray-500">
-                        {item.reorderLevel} {item.unit}
-                      </td>
-                      <td className="px-5 py-3 font-medium text-gray-700">Rs. {item.costPerUnit}</td>
-                      <td className="px-5 py-3">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => openEdit(item)}
-                            className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeleteId(item._id)}
-                            className="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg transition"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                      <td className="px-6 py-4 text-right space-x-1">
+                        <button
+                          onClick={() => openEdit(item)}
+                          className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition"
+                          title="Edit Item"
+                        >
+                          <Edit2 className="w-4 h-4 inline" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteId(item._id)}
+                          className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition"
+                          title="Delete Item"
+                        >
+                          <Trash2 className="w-4 h-4 inline" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -188,84 +197,88 @@ function Inventory() {
         )}
       </div>
 
-      {/* ── Add/Edit Modal ── */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-bold text-gray-900">
-                {editingId ? 'Edit Inventory Item' : 'Add Inventory Item'}
-              </h2>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 font-bold text-lg px-2">✕</button>
-            </div>
-
-            {formError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-xs mb-4">{formError}</div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
+              {editingId ? 'Edit Stock Item' : 'Add New Stock Item'}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Item Name *</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Item Name *</label>
                 <input
-                  required
                   type="text"
+                  required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g. Cooking Oil"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Unit *</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Unit *</label>
                   <select
                     value={form.unit}
                     onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none capitalize"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   >
                     {UNITS.map((u) => (
                       <option key={u} value={u}>{u}</option>
                     ))}
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Cost / Unit (Rs.)</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Current Stock</label>
                   <input
                     type="number"
-                    min={0}
-                    value={form.costPerUnit}
-                    onChange={(e) => setForm({ ...form, costPerUnit: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Current Stock</label>
-                  <input
-                    type="number"
-                    min={0}
+                    min="0"
                     value={form.currentStock}
                     onChange={(e) => setForm({ ...form, currentStock: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Reorder Level (Alert)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.reorderLevel}
-                    onChange={(e) => setForm({ ...form, reorderLevel: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 border-t pt-4">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Reorder Level</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.reorderLevel}
+                    onChange={(e) => setForm({ ...form, reorderLevel: Number(e.target.value) })}
+                    className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Cost / Unit (PKR)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.costPerUnit}
+                    onChange={(e) => setForm({ ...form, costPerUnit: Number(e.target.value) })}
+                    className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2 text-sm font-bold bg-amber-500 hover:bg-amber-600 text-neutral-950 rounded-xl transition"
+                >
                   {submitting ? 'Saving...' : editingId ? 'Save Changes' : 'Add Item'}
                 </button>
               </div>

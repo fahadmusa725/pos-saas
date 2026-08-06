@@ -20,6 +20,11 @@ const tableSchema = new mongoose.Schema(
       enum: ['available', 'occupied', 'reserved'],
       default: 'available',
     },
+    section: {
+      type: String,
+      enum: ['Indoor', 'Outdoor', 'Rooftop', 'VIP', 'Bar'],
+      default: 'Indoor',
+    },
   },
   { timestamps: true }
 );

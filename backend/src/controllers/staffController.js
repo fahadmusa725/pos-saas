@@ -9,7 +9,7 @@ const getStaffMembers = async (req, res) => {
   try {
     const staff = await User.find({
       restaurantId: req.tenantId,
-      role: { $in: ['cashier', 'waiter', 'kitchen'] },
+      role: { $in: ['manager', 'cashier', 'waiter', 'kitchen'] },
     }).select('-password').sort({ createdAt: -1 });
 
     // One-time auto migration for legacy staff members without permissions array
@@ -68,11 +68,11 @@ const createStaffMember = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide name, email, and role' });
     }
 
-    const allowedRoles = ['cashier', 'waiter', 'kitchen'];
+    const allowedRoles = ['manager', 'cashier', 'waiter', 'kitchen'];
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid staff role. Allowed roles are: cashier, waiter, kitchen',
+        message: 'Invalid staff role. Allowed roles are: manager, cashier, waiter, kitchen',
       });
     }
 
@@ -133,7 +133,7 @@ const updateStaffMember = async (req, res) => {
     const staffMember = await User.findOne({
       _id: req.params.id,
       restaurantId: req.tenantId,
-      role: { $in: ['cashier', 'waiter', 'kitchen'] },
+      role: { $in: ['manager', 'cashier', 'waiter', 'kitchen'] },
     });
 
     if (!staffMember) {
@@ -153,7 +153,7 @@ const updateStaffMember = async (req, res) => {
     }
 
     if (role) {
-      const allowedRoles = ['cashier', 'waiter', 'kitchen'];
+      const allowedRoles = ['manager', 'cashier', 'waiter', 'kitchen'];
       if (!allowedRoles.includes(role)) {
         return res.status(400).json({ success: false, message: 'Invalid staff role' });
       }
@@ -198,7 +198,7 @@ const toggleStaffStatus = async (req, res) => {
     const staffMember = await User.findOne({
       _id: req.params.id,
       restaurantId: req.tenantId,
-      role: { $in: ['cashier', 'waiter', 'kitchen'] },
+      role: { $in: ['manager', 'cashier', 'waiter', 'kitchen'] },
     });
 
     if (!staffMember) {
@@ -229,7 +229,7 @@ const deleteStaffMember = async (req, res) => {
     const staffMember = await User.findOneAndDelete({
       _id: req.params.id,
       restaurantId: req.tenantId,
-      role: { $in: ['cashier', 'waiter', 'kitchen'] },
+      role: { $in: ['manager', 'cashier', 'waiter', 'kitchen'] },
     });
 
     if (!staffMember) {

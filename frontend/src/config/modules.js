@@ -24,5 +24,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
   cashier: ['orders', 'tables', 'customers'],
   waiter: ['orders', 'tables', 'kds'],
   kitchen: ['kds'],
+  // manager: broad access — all operational modules; create/delete staff restricted at API level
+  manager: APP_MODULES.filter((m) => m.id !== 'staff').map((m) => m.id),
   'restaurant-admin': APP_MODULES.map((m) => m.id),
 };

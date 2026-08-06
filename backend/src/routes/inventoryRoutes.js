@@ -7,10 +7,11 @@ const {
   updateInventoryItem,
   deleteInventoryItem,
 } = require('../controllers/inventoryController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, checkPermission } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
 
-router.use(protect, setTenant, authorize('restaurant-admin'));
+// checkPermission('inventory') — restaurant-admin always passes, others need 'inventory' in permissions[]
+router.use(protect, setTenant, checkPermission('inventory'));
 
 // /low-stock must be defined before /:id to prevent route conflicts
 router.get('/low-stock', getLowStockItems);

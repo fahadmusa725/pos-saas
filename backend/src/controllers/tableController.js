@@ -2,7 +2,7 @@ const Table = require('../models/Table');
 
 exports.createTable = async (req, res) => {
   try {
-    const { tableNumber, capacity } = req.body;
+    const { tableNumber, capacity, section } = req.body;
 
     if (!tableNumber) {
       return res.status(400).json({ success: false, message: 'Table number is required' });
@@ -12,6 +12,7 @@ exports.createTable = async (req, res) => {
       restaurantId: req.tenantId,
       tableNumber,
       capacity,
+      ...(section && { section }),
     });
 
     res.status(201).json({ success: true, data: table });
@@ -37,10 +38,11 @@ exports.updateTable = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Table not found' });
     }
 
-    const { tableNumber, capacity, status } = req.body;
+    const { tableNumber, capacity, status, section } = req.body;
     if (tableNumber !== undefined) table.tableNumber = tableNumber;
     if (capacity !== undefined) table.capacity = capacity;
     if (status !== undefined) table.status = status;
+    if (section !== undefined) table.section = section;
 
     await table.save();
 
