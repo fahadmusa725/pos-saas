@@ -7,11 +7,11 @@ const {
   getPaymentBreakdown,
   getProfitLossReport,
 } = require('../controllers/reportController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, checkPermission } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
 
-// All report routes require restaurant-admin authorization & tenant isolation
-router.use(protect, setTenant, authorize('restaurant-admin'));
+// checkPermission('reports') — restaurant-admin always passes; others need 'reports' in permissions[]
+router.use(protect, setTenant, checkPermission('reports'));
 
 router.get('/sales', getSalesReport);
 router.get('/best-sellers', getBestSellersReport);

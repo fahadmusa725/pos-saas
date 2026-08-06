@@ -5,10 +5,11 @@ const {
   createPurchaseOrder,
   updatePurchaseOrderStatus,
 } = require('../controllers/purchaseOrderController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, checkPermission } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
 
-router.use(protect, setTenant, authorize('restaurant-admin'));
+// checkPermission('purchase-orders') — restaurant-admin always passes, others need 'purchase-orders' in permissions[]
+router.use(protect, setTenant, checkPermission('purchase-orders'));
 
 router.route('/')
   .get(getPurchaseOrders)

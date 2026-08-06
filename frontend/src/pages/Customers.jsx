@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import ConfirmModal from '../components/ConfirmModal';
+import { UserCheck, UserPlus, Phone, Mail, MapPin, Award, History, Edit2, Trash2 } from 'lucide-react';
 
 const EMPTY_FORM = {
   name: '',
@@ -15,10 +16,6 @@ function Customers() {
   const [customers, setCustomers]       = useState([]);
   const [loading, setLoading]           = useState(true);
   const [submitting, setSubmitting]     = useState(false);
-  const [error, setError]               = useState('');
-  const [formError, setFormError]       = useState('');
-
-  // Modal state
   const [showModal, setShowModal]       = useState(false);
   const [editingId, setEditingId]       = useState(null);
   const [form, setForm]                 = useState(EMPTY_FORM);
@@ -37,7 +34,7 @@ function Customers() {
       const res = await api.get('/customers');
       setCustomers(res.data.data);
     } catch (err) {
-      setError('Failed to load customers');
+      toast.error('Failed to load customers');
     } finally {
       setLoading(false);
     }
@@ -50,7 +47,6 @@ function Customers() {
   const openAdd = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
-    setFormError('');
     setShowModal(true);
   };
 
@@ -63,7 +59,6 @@ function Customers() {
       address: customer.address || '',
       loyaltyPoints: customer.loyaltyPoints || 0,
     });
-    setFormError('');
     setShowModal(true);
   };
 
@@ -71,12 +66,10 @@ function Customers() {
     setShowModal(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
-    setFormError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
     setSubmitting(true);
     try {
       if (editingId) {
@@ -90,7 +83,6 @@ function Customers() {
       fetchCustomers();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save customer');
-      setFormError(err.response?.data?.message || 'Failed to save customer');
     } finally {
       setSubmitting(false);
     }
@@ -114,7 +106,6 @@ function Customers() {
 
   const handleViewOrders = async (customer) => {
     if (selectedCustomer?._id === customer._id) {
-      // Toggle off if same customer clicked again
       setSelectedCustomer(null);
       setCustomerOrders([]);
       return;
@@ -133,145 +124,94 @@ function Customers() {
     }
   };
 
-  const PAY_STATUS = {
-    unpaid:         'bg-red-50 text-red-700 border border-red-200',
-    partially_paid: 'bg-orange-50 text-orange-700 border border-orange-200',
-    paid:           'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  };
-
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Customers</h1>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
+            Customers Directory
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            Track customer profiles, phone lookup, loyalty points, and purchase history
+          </p>
+        </div>
         <button
           onClick={openAdd}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition"
+          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-neutral-950 font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 text-sm"
         >
-          + Add Customer
+          <UserPlus className="w-4 h-4" />
+          <span>Add Customer</span>
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-sm mb-4">
-          {error}
-        </div>
-      )}
-
       {/* Customers Table */}
-      <div className="bg-white rounded-xl shadow overflow-hidden mb-6">
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
-          <p className="p-6 text-gray-500">Loading customers...</p>
+          <div className="p-6 space-y-3">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="h-12 bg-neutral-100 dark:bg-neutral-800 rounded-lg animate-pulse" />
+            ))}
+          </div>
         ) : customers.length === 0 ? (
-          <p className="p-6 text-gray-400 italic">No customers yet. Add your first customer.</p>
+          <div className="p-12 text-center text-neutral-400 italic">No customers recorded yet.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="px-5 py-3">Name</th>
-                  <th className="px-5 py-3">Phone</th>
-                  <th className="px-5 py-3">Email</th>
-                  <th className="px-5 py-3">Loyalty Pts</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
+                  <th className="px-6 py-3.5">Customer</th>
+                  <th className="px-6 py-3.5">Phone</th>
+                  <th className="px-6 py-3.5">Email / Address</th>
+                  <th className="px-6 py-3.5">Loyalty Points</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
                 {customers.map((c) => (
-                  <>
-                    <tr
-                      key={c._id}
-                      className={`hover:bg-gray-50 transition cursor-pointer ${selectedCustomer?._id === c._id ? 'bg-blue-50' : ''}`}
-                      onClick={() => handleViewOrders(c)}
-                    >
-                      <td className="px-5 py-3 font-medium text-gray-800">{c.name}</td>
-                      <td className="px-5 py-3 font-mono text-gray-600">{c.phone}</td>
-                      <td className="px-5 py-3 text-gray-500">{c.email || '—'}</td>
-                      <td className="px-5 py-3">
-                        <span className="px-2 py-0.5 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full text-xs font-semibold">
-                          {c.loyaltyPoints} pts
-                        </span>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={() => openEdit(c)}
-                            className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeleteId(c._id)}
-                            className="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg transition"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* Inline Order History Panel */}
-                    {selectedCustomer?._id === c._id && (
-                      <tr key={`${c._id}-orders`}>
-                        <td colSpan={5} className="px-5 py-4 bg-blue-50 border-t border-blue-100">
-                          <div className="flex justify-between items-center mb-3">
-                            <div>
-                              <h3 className="text-sm font-bold text-blue-900">
-                                Order History — {c.name}
-                              </h3>
-                              {!ordersLoading && (
-                                <p className="text-xs text-blue-700 mt-0.5">
-                                  {customerOrders.length} order{customerOrders.length !== 1 ? 's' : ''} &nbsp;·&nbsp; Total Spend: <b>Rs. {totalSpend}</b>
-                                </p>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => { setSelectedCustomer(null); setCustomerOrders([]); }}
-                              className="text-xs text-blue-500 hover:text-blue-700"
-                            >
-                              ✕ Close
-                            </button>
-                          </div>
-
-                          {ordersLoading ? (
-                            <p className="text-xs text-gray-500">Loading orders...</p>
-                          ) : customerOrders.length === 0 ? (
-                            <p className="text-xs text-gray-400 italic">No orders linked to this customer yet.</p>
-                          ) : (
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-xs">
-                                <thead>
-                                  <tr className="text-gray-500 border-b border-blue-200">
-                                    <th className="py-1.5 pr-4 text-left font-semibold">Order #</th>
-                                    <th className="py-1.5 pr-4 text-left font-semibold">Type</th>
-                                    <th className="py-1.5 pr-4 text-left font-semibold">Total</th>
-                                    <th className="py-1.5 pr-4 text-left font-semibold">Payment</th>
-                                    <th className="py-1.5 text-left font-semibold">Date</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {customerOrders.map((order) => (
-                                    <tr key={order._id} className="border-b border-blue-100 last:border-0">
-                                      <td className="py-1.5 pr-4 font-mono font-semibold text-gray-800">{order.orderNumber}</td>
-                                      <td className="py-1.5 pr-4 capitalize text-gray-600">{order.orderType}</td>
-                                      <td className="py-1.5 pr-4 font-semibold text-gray-800">Rs. {order.total}</td>
-                                      <td className="py-1.5 pr-4">
-                                        <span className={`px-2 py-0.5 rounded-full font-semibold ${PAY_STATUS[order.paymentStatus] || ''}`}>
-                                          {order.paymentStatus?.replace('_', ' ')}
-                                        </span>
-                                      </td>
-                                      <td className="py-1.5 text-gray-500">
-                                        {new Date(order.createdAt).toLocaleDateString()}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </>
+                  <tr key={c._id} className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors">
+                    <td className="px-6 py-4 font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-amber-500" />
+                      {c.name}
+                    </td>
+                    <td className="px-6 py-4 text-neutral-600 dark:text-neutral-300 font-mono">{c.phone}</td>
+                    <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">
+                      <div>{c.email || '—'}</div>
+                      <div className="text-neutral-400">{c.address || ''}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                        <Award className="w-3.5 h-3.5" />
+                        {c.loyaltyPoints || 0} pts
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-1">
+                      <button
+                        onClick={() => handleViewOrders(c)}
+                        className={`p-2 rounded-lg transition text-xs font-semibold ${
+                          selectedCustomer?._id === c._id
+                            ? 'bg-amber-500 text-neutral-950'
+                            : 'text-amber-500 hover:bg-amber-500/10'
+                        }`}
+                        title="View Order History"
+                      >
+                        <History className="w-4 h-4 inline" />
+                      </button>
+                      <button
+                        onClick={() => openEdit(c)}
+                        className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition"
+                        title="Edit Customer"
+                      >
+                        <Edit2 className="w-4 h-4 inline" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(c._id)}
+                        className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition"
+                        title="Delete Customer"
+                      >
+                        <Trash2 className="w-4 h-4 inline" />
+                      </button>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -279,84 +219,115 @@ function Customers() {
         )}
       </div>
 
-      {/* ── Add/Edit Modal ── */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-bold text-gray-900">
-                {editingId ? 'Edit Customer' : 'Add New Customer'}
-              </h2>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 font-bold text-lg px-2">✕</button>
+      {/* Customer Order History Panel */}
+      {selectedCustomer && (
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
+          <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 pb-3">
+            <div>
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+                <History className="w-5 h-5 text-amber-500" />
+                Order History — {selectedCustomer.name}
+              </h3>
+              <p className="text-xs text-neutral-500">Phone: {selectedCustomer.phone}</p>
             </div>
+            <div className="text-right">
+              <span className="text-xs uppercase text-neutral-400 font-semibold block">Total Spend</span>
+              <span className="text-xl font-extrabold text-amber-500">Rs. {totalSpend}</span>
+            </div>
+          </div>
 
-            {formError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-xs mb-4">
-                {formError}
-              </div>
-            )}
+          {ordersLoading ? (
+            <p className="text-sm text-neutral-500 italic">Loading orders...</p>
+          ) : customerOrders.length === 0 ? (
+            <p className="text-sm text-neutral-400 italic">No past orders found for this customer.</p>
+          ) : (
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {customerOrders.map((o) => (
+                <div
+                  key={o._id}
+                  className="p-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl flex justify-between items-center text-xs"
+                >
+                  <div>
+                    <span className="font-mono font-bold text-amber-500">#{o.orderNumber}</span>
+                    <span className="text-neutral-400 ml-2">{new Date(o.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="capitalize font-medium text-neutral-600 dark:text-neutral-300">{o.orderType}</span>
+                    <span className="font-extrabold text-neutral-900 dark:text-white">Rs. {o.total}</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      {o.paymentStatus}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Full Name *</label>
-                  <input
-                    required
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="e.g. Ahmed Khan"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Phone * <span className="text-gray-400 font-normal">(unique per restaurant)</span></label>
-                  <input
-                    required
-                    type="text"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="e.g. 03001234567"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Loyalty Points <span className="text-gray-400 font-normal">(manual)</span></label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.loyaltyPoints}
-                    onChange={(e) => setForm({ ...form, loyaltyPoints: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Email <span className="text-gray-400 font-normal">(optional)</span></label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    placeholder="e.g. ahmed@email.com"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Address <span className="text-gray-400 font-normal">(optional)</span></label>
-                  <input
-                    type="text"
-                    value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    placeholder="e.g. House 5, Block B, Lahore"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
+      {/* Add / Edit Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
+              {editingId ? 'Edit Customer' : 'Add New Customer'}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
               </div>
 
-              <div className="flex justify-end gap-2 border-t pt-4">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Phone *</label>
+                <input
+                  type="text"
+                  required
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Address</label>
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2 text-sm font-bold bg-amber-500 hover:bg-amber-600 text-neutral-950 rounded-xl transition"
+                >
                   {submitting ? 'Saving...' : editingId ? 'Save Changes' : 'Add Customer'}
                 </button>
               </div>

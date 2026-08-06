@@ -7,10 +7,11 @@ const {
   updateExpense,
   deleteExpense,
 } = require('../controllers/expenseController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, checkPermission } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
 
-router.use(protect, setTenant, authorize('restaurant-admin'));
+// checkPermission('expenses') — restaurant-admin always passes, others need 'expenses' in permissions[]
+router.use(protect, setTenant, checkPermission('expenses'));
 
 // /summary must be defined before /:id
 router.get('/summary', getExpenseSummary);

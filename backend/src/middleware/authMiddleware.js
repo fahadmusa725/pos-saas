@@ -51,6 +51,8 @@ exports.authorize = (...roles) => {
 };
 
 // Granular module permission check middleware
+// restaurant-admin & super-admin: always allowed
+// manager, cashier, waiter, kitchen: checked against their permissions[] array
 exports.checkPermission = (moduleName) => {
   return (req, res, next) => {
     if (req.user.role === 'super-admin' || req.user.role === 'restaurant-admin') {

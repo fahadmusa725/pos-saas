@@ -6,11 +6,11 @@ const {
   updateSupplier,
   deleteSupplier,
 } = require('../controllers/supplierController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, checkPermission } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
 
-// All supplier endpoints: admin-only (purchasing data is sensitive)
-router.use(protect, setTenant, authorize('restaurant-admin'));
+// checkPermission('suppliers') — restaurant-admin always passes; others need 'suppliers' in permissions[]
+router.use(protect, setTenant, checkPermission('suppliers'));
 
 router.route('/')
   .get(getSuppliers)

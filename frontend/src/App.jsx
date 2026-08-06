@@ -55,14 +55,14 @@ function App() {
           <Route path="menu-items" element={<ProtectedRoute permissionId="menu-items"><MenuItems /></ProtectedRoute>} />
           <Route path="orders" element={<ProtectedRoute permissionId="orders"><Orders /></ProtectedRoute>} />
           <Route path="tables" element={<ProtectedRoute permissionId="tables"><Tables /></ProtectedRoute>} />
-          <Route path="staff" element={<ProtectedRoute allowedRoles={['restaurant-admin']}><Staff /></ProtectedRoute>} />
+          <Route path="staff" element={<ProtectedRoute permissionId="staff"><Staff /></ProtectedRoute>} />
           <Route path="customers" element={<ProtectedRoute permissionId="customers"><Customers /></ProtectedRoute>} />
-          <Route path="suppliers" element={<ProtectedRoute allowedRoles={['restaurant-admin']}><Suppliers /></ProtectedRoute>} />
-          <Route path="inventory" element={<ProtectedRoute allowedRoles={['restaurant-admin']}><Inventory /></ProtectedRoute>} />
-          <Route path="purchase-orders" element={<ProtectedRoute allowedRoles={['restaurant-admin']}><PurchaseOrders /></ProtectedRoute>} />
-          <Route path="expenses" element={<ProtectedRoute allowedRoles={['restaurant-admin']}><Expenses /></ProtectedRoute>} />
-          <Route path="reports" element={<ProtectedRoute allowedRoles={['restaurant-admin']}><Reports /></ProtectedRoute>} />
-          <Route path="coupons" element={<ProtectedRoute allowedRoles={['restaurant-admin']}><Coupons /></ProtectedRoute>} />
+          <Route path="suppliers" element={<ProtectedRoute permissionId="suppliers"><Suppliers /></ProtectedRoute>} />
+          <Route path="inventory" element={<ProtectedRoute permissionId="inventory"><Inventory /></ProtectedRoute>} />
+          <Route path="purchase-orders" element={<ProtectedRoute permissionId="purchase-orders"><PurchaseOrders /></ProtectedRoute>} />
+          <Route path="expenses" element={<ProtectedRoute permissionId="expenses"><Expenses /></ProtectedRoute>} />
+          <Route path="reports" element={<ProtectedRoute permissionId="reports"><Reports /></ProtectedRoute>} />
+          <Route path="coupons" element={<ProtectedRoute permissionId="coupons"><Coupons /></ProtectedRoute>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" />} />

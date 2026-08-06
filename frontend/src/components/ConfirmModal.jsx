@@ -1,17 +1,6 @@
 import { useState } from 'react';
+import { AlertTriangle, Info, Loader2 } from 'lucide-react';
 
-/**
- * Reusable Confirmation Modal — replaces window.confirm() throughout the app.
- *
- * Props:
- *   isOpen        — boolean
- *   title         — string (e.g. "Delete Customer?")
- *   message       — string (e.g. "This action cannot be undone.")
- *   confirmLabel  — string (default "Confirm")
- *   variant       — 'danger' | 'primary' (default 'danger')
- *   onConfirm     — async () => void  (called on confirm click; can be async)
- *   onCancel      — () => void
- */
 function ConfirmModal({
   isOpen,
   title = 'Are you sure?',
@@ -36,37 +25,38 @@ function ConfirmModal({
 
   const btnClass =
     variant === 'danger'
-      ? 'bg-red-600 hover:bg-red-700 text-white'
-      : 'bg-blue-600 hover:bg-blue-700 text-white';
+      ? 'bg-rose-600 hover:bg-rose-700 text-white'
+      : 'bg-amber-500 hover:bg-amber-600 text-neutral-950';
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-700 text-center">
-        <div className="text-4xl mb-3">{variant === 'danger' ? '⚠️' : 'ℹ️'}</div>
-        <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-2">{title}</h3>
-        {message && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{message}</p>
-        )}
-        <div className="flex gap-3 justify-center">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[60]">
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto">
+          {variant === 'danger' ? <AlertTriangle className="w-6 h-6" /> : <Info className="w-6 h-6 text-amber-500" />}
+        </div>
+
+        <div>
+          <h3 className="text-base font-extrabold text-neutral-900 dark:text-white mb-1">{title}</h3>
+          {message && (
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">{message}</p>
+          )}
+        </div>
+
+        <div className="flex gap-2 justify-center pt-2">
           <button
             onClick={onCancel}
             disabled={loading}
-            className="px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 text-xs font-bold text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={loading}
-            className={`px-5 py-2 text-sm font-bold rounded-lg transition disabled:opacity-60 flex items-center gap-2 ${btnClass}`}
+            className={`flex-1 px-4 py-2.5 text-xs font-extrabold rounded-xl transition disabled:opacity-60 flex items-center justify-center gap-2 ${btnClass}`}
           >
-            {loading && (
-              <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-              </svg>
-            )}
-            {loading ? 'Processing...' : confirmLabel}
+            {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            <span>{loading ? 'Processing...' : confirmLabel}</span>
           </button>
         </div>
       </div>
