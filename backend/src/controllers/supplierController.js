@@ -5,7 +5,9 @@ const Supplier = require('../models/Supplier');
 // @access  Private (restaurant-admin only)
 const getSuppliers = async (req, res) => {
   try {
-    const suppliers = await Supplier.find({ restaurantId: req.tenantId }).sort({ name: 1 });
+    const suppliers = await Supplier.find({ restaurantId: req.tenantId })
+      .populate('itemsSupplied', 'name unit')
+      .sort({ name: 1 });
     res.status(200).json({ success: true, count: suppliers.length, data: suppliers });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -30,7 +32,7 @@ const createSupplier = async (req, res) => {
       phone: phone?.trim() || '',
       email: email?.trim() || '',
       address: address?.trim() || '',
-      itemsSupplied: itemsSupplied?.trim() || '',
+      itemsSupplied: Array.isArray(itemsSupplied) ? itemsSupplied : [],
     });
 
     res.status(201).json({ success: true, data: supplier });
@@ -56,7 +58,7 @@ const updateSupplier = async (req, res) => {
     if (phone !== undefined)         supplier.phone         = phone.trim();
     if (email !== undefined)         supplier.email         = email.trim();
     if (address !== undefined)       supplier.address       = address.trim();
-    if (itemsSupplied !== undefined) supplier.itemsSupplied = itemsSupplied.trim();
+    if (itemsSupplied !== undefined) supplier.itemsSupplied = Array.isArray(itemsSupplied) ? itemsSupplied : [];
 
     await supplier.save();
     res.status(200).json({ success: true, data: supplier });

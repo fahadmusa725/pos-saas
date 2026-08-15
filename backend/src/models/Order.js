@@ -13,6 +13,8 @@ const orderItemSchema = new mongoose.Schema(
     variant: { type: String }, // e.g. "Large"
     addOns: [{ name: String, price: Number }],
     notes: { type: String, default: '' },
+    round: { type: Number, default: 1 },
+    addedAt: { type: Date, default: Date.now },
     itemDiscount: {
       discountType: {
         type: String,
@@ -37,7 +39,7 @@ const paymentBreakdownSchema = new mongoose.Schema(
   {
     method: {
       type: String,
-      enum: ['cash', 'card', 'online', 'other'],
+      enum: ['cash', 'card', 'online', 'credit', 'other'],
       required: true,
     },
     amount: { type: Number, required: true },
@@ -66,9 +68,6 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Table',
     },
-    // Optional customer link — if customer is later deleted, this ref becomes stale.
-    // Frontend handles this gracefully with: order.customerId?.name || 'Deleted Customer'
-    // Orders are never deleted when a customer is deleted (financial records preserved).
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer',
@@ -91,7 +90,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['cash', 'card', 'split', 'online', 'other'],
+      enum: ['cash', 'card', 'split', 'online', 'credit', 'other'],
       default: 'cash',
     },
     paymentBreakdown: [paymentBreakdownSchema],

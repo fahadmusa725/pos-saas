@@ -6,7 +6,55 @@ const Order = require('../models/Order');
 // @access  Private (restaurant-admin, cashier)
 const getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find({ restaurantId: req.tenantId }).sort({ name: 1 });
+    const mongoose = require('mongoose');
+    const tenantObjectId = new mongoose.Types.ObjectId(req.tenantId.toString());
+
+    const customers = await Customer.aggregate([
+      { $match: { restaurantId: tenantObjectId } },
+      {
+        $lookup: {
+          from: 'orders',
+          localField: '_id',
+          foreignField: 'customerId',
+          as: 'orders',
+        },
+      },
+      {
+        $project: {
+          name: 1,
+          phone: 1,
+          email: 1,
+          address: 1,
+          loyaltyPoints: 1,
+          creditBalance: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          totalOrders: { $size: '$orders' },
+          totalSpent: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$orders',
+                    as: 'o',
+                    cond: {
+                      $or: [
+                        { $eq: ['$$o.paymentStatus', 'paid'] },
+                        { $eq: ['$$o.status', 'completed'] },
+                      ],
+                    },
+                  },
+                },
+                as: 'o',
+                in: '$$o.total',
+              },
+            },
+          },
+        },
+      },
+      { $sort: { name: 1 } },
+    ]);
+
     res.status(200).json({ success: true, count: customers.length, data: customers });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -147,11 +195,11 @@ const getCustomerOrders = async (req, res) => {
       restaurantId: req.tenantId,
       customerId: customer._id,
     })
-      .select('orderNumber orderType total paymentStatus status createdAt')
+      .populate('tableId', 'tableNumber')
       .sort('-createdAt');
 
     const totalSpend = orders
-      .filter((o) => o.paymentStatus === 'paid')
+      .filter((o) => o.paymentStatus === 'paid' || o.status === 'completed')
       .reduce((sum, o) => sum + o.total, 0);
 
     res.status(200).json({
@@ -165,6 +213,49 @@ const getCustomerOrders = async (req, res) => {
   }
 };
 
+// @desc    Settle / Pay customer credit balance (udhar) with Overpayment Guard
+// @route   POST /api/customers/:id/settle-credit
+// @access  Private (restaurant-admin, cashier)
+const settleCustomerCredit = async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const settleAmount = Number(amount);
+
+    if (isNaN(settleAmount) || settleAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid settlement amount > 0 is required' });
+    }
+
+    const customer = await Customer.findOne({ _id: req.params.id, restaurantId: req.tenantId });
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    const currentCredit = Number(customer.creditBalance) || 0;
+    if (currentCredit <= 0) {
+      return res.status(400).json({ success: false, message: 'Customer has no outstanding credit balance' });
+    }
+
+    // Overpayment Guard
+    if (settleAmount > currentCredit) {
+      return res.status(400).json({
+        success: false,
+        message: `Settlement amount exceeds outstanding balance. Current udhar: Rs. ${currentCredit.toFixed(2)}`,
+      });
+    }
+
+    customer.creditBalance = Math.max(0, currentCredit - settleAmount);
+    await customer.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Settled Rs. ${settleAmount} of credit debt. Remaining udhar: Rs. ${customer.creditBalance}`,
+      data: customer,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getCustomers,
   searchCustomerByPhone,
@@ -172,4 +263,5 @@ module.exports = {
   updateCustomer,
   deleteCustomer,
   getCustomerOrders,
+  settleCustomerCredit,
 };

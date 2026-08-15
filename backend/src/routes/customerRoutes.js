@@ -7,6 +7,7 @@ const {
   updateCustomer,
   deleteCustomer,
   getCustomerOrders,
+  settleCustomerCredit,
 } = require('../controllers/customerController');
 const { protect, authorize, checkPermission } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
@@ -22,6 +23,7 @@ router.route('/')
   .post(authorize('restaurant-admin', 'cashier'), createCustomer);
 
 router.get('/:id/orders', authorize('restaurant-admin', 'cashier'), getCustomerOrders);
+router.post('/:id/settle-credit', authorize('restaurant-admin', 'cashier'), settleCustomerCredit);
 
 router.route('/:id')
   .put(authorize('restaurant-admin', 'cashier'), updateCustomer)

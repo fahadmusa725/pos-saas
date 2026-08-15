@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
-import { ClipboardList, Plus, CheckCircle, XCircle, Trash2, Package } from 'lucide-react';
+import { ClipboardList, Plus, DollarSign, XCircle, Trash2, Package, X } from 'lucide-react';
 
 function PurchaseOrders() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -9,7 +9,11 @@ function PurchaseOrders() {
   const [inventoryItems, setInventoryItems] = useState([]);
   const [loading, setLoading]               = useState(true);
   const [submitting, setSubmitting]         = useState(false);
-  const [receivingId, setReceivingId]       = useState(null);
+
+  // PO Payment Modal state
+  const [payModalPO, setPayModalPO]         = useState(null);
+  const [payAmount, setPayAmount]           = useState('');
+  const [paying, setPaying]                 = useState(false);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [supplierId, setSupplierId]         = useState('');
@@ -65,6 +69,18 @@ function PurchaseOrders() {
     return poItems.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.costPerUnit) || 0), 0);
   };
 
+  // Filter inventory items to those supplied by the selected supplier (if any)
+  const filteredInventoryItems = (() => {
+    if (!supplierId) return inventoryItems;
+    const selectedSupplier = suppliers.find((s) => s._id === supplierId);
+    if (!selectedSupplier || !selectedSupplier.itemsSupplied || selectedSupplier.itemsSupplied.length === 0)
+      return inventoryItems;
+    const catalogIds = new Set(
+      selectedSupplier.itemsSupplied.map((i) => (typeof i === 'object' ? i._id : i))
+    );
+    return inventoryItems.filter((inv) => catalogIds.has(inv._id));
+  })();
+
   const handleCreateOrder = async (e) => {
     e.preventDefault();
 
@@ -100,16 +116,45 @@ function PurchaseOrders() {
   };
 
   const handleStatusUpdate = async (id, status) => {
-    if (receivingId) return;
-    setReceivingId(id);
     try {
       await api.put(`/purchase-orders/${id}/status`, { status });
       fetchData();
-      toast.success(status === 'received' ? 'Purchase order marked as Received! Inventory updated.' : 'Purchase order cancelled');
+      toast.success('Purchase order cancelled');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update order status');
+    }
+  };
+
+  const openPayModal = (po) => {
+    const remaining = Math.max(0, (po.totalCost || 0) - (po.amountPaid || 0));
+    setPayModalPO(po);
+    setPayAmount(remaining.toString());
+  };
+
+  const closePayModal = () => {
+    setPayModalPO(null);
+    setPayAmount('');
+  };
+
+  const handleRecordPayment = async (e) => {
+    e.preventDefault();
+    if (!payModalPO) return;
+    const amt = Number(payAmount);
+    if (isNaN(amt) || amt <= 0) {
+      toast.error('Enter a valid payment amount > 0');
+      return;
+    }
+
+    setPaying(true);
+    try {
+      const res = await api.patch(`/purchase-orders/${payModalPO._id}/pay`, { amount: amt });
+      toast.success(res.data.message || 'Payment recorded!');
+      closePayModal();
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to record payment');
     } finally {
-      setReceivingId(null);
+      setPaying(false);
     }
   };
 
@@ -119,15 +164,22 @@ function PurchaseOrders() {
     cancelled: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
   };
 
+  const PAYMENT_BADGES = {
+    unpaid: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+    partially_paid: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+    paid: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
             Purchase Orders
           </h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-            Create supplier orders & auto-increment inventory stock on receiving
+            Manage purchase payments &amp; auto-receive inventory stock upon full payment
           </p>
         </div>
         <button
@@ -138,6 +190,40 @@ function PurchaseOrders() {
           <span>{showCreateForm ? 'Close Form' : 'Create Purchase Order'}</span>
         </button>
       </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Total Purchase Orders */}
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex items-center gap-4 shadow-xs">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+            <ClipboardList className="w-6 h-6 text-amber-500" />
+          </div>
+          <div>
+            <p className="text-3xl font-extrabold text-neutral-900 dark:text-white leading-none">
+              {purchaseOrders.length}
+            </p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mt-1">
+              TOTAL PURCHASE ORDERS
+            </p>
+          </div>
+        </div>
+
+        {/* Total Purchasing Expenses */}
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex items-center gap-4 shadow-xs">
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+            <DollarSign className="w-6 h-6 text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-neutral-900 dark:text-white leading-none">
+              PKR {purchaseOrders.reduce((sum, po) => sum + (po.totalCost || 0), 0).toLocaleString()}
+            </p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mt-1">
+              TOTAL PURCHASING EXPENSES
+            </p>
+          </div>
+        </div>
+      </div>
+
 
       {/* Create Form */}
       {showCreateForm && (
@@ -150,7 +236,10 @@ function PurchaseOrders() {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">Supplier (Optional)</label>
                 <select
                   value={supplierId}
-                  onChange={(e) => setSupplierId(e.target.value)}
+                  onChange={(e) => {
+                    setSupplierId(e.target.value);
+                    setPoItems([{ inventoryItemId: '', quantity: 1, costPerUnit: 0 }]);
+                  }}
                   className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 >
                   <option value="">Select Supplier</option>
@@ -184,11 +273,15 @@ function PurchaseOrders() {
                     className="flex-1 min-w-[180px] px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs text-neutral-900 dark:text-neutral-100"
                   >
                     <option value="">Select Item</option>
-                    {inventoryItems.map((inv) => (
-                      <option key={inv._id} value={inv._id}>
-                        {inv.name} ({inv.unit})
-                      </option>
-                    ))}
+                    {filteredInventoryItems.length === 0 ? (
+                      <option disabled>No catalog items for this supplier</option>
+                    ) : (
+                      filteredInventoryItems.map((inv) => (
+                        <option key={inv._id} value={inv._id}>
+                          {inv.name} ({inv.unit})
+                        </option>
+                      ))
+                    )}
                   </select>
 
                   <input
@@ -263,55 +356,145 @@ function PurchaseOrders() {
                   <th className="px-6 py-3.5">Supplier</th>
                   <th className="px-6 py-3.5">Items</th>
                   <th className="px-6 py-3.5">Total Cost</th>
+                  <th className="px-6 py-3.5">Paid / Remaining</th>
+                  <th className="px-6 py-3.5">Payment</th>
                   <th className="px-6 py-3.5">Status</th>
                   <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-                {purchaseOrders.map((po) => (
-                  <tr key={po._id} className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors">
-                    <td className="px-6 py-4 font-mono font-bold text-amber-500">#{po.poNumber}</td>
-                    <td className="px-6 py-4 font-bold text-neutral-900 dark:text-white">
-                      {po.supplierId?.name || 'Direct Order'}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">
-                      {po.items.map((i) => `${i.inventoryItemId?.name || 'Item'} (${i.quantity})`).join(', ')}
-                    </td>
-                    <td className="px-6 py-4 font-extrabold text-neutral-900 dark:text-white">Rs. {po.totalCost}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${STATUS_BADGES[po.status]}`}>
-                        {po.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      {po.status === 'pending' && (
-                        <>
+                {purchaseOrders.map((po) => {
+                  const paid = po.amountPaid || 0;
+                  const remaining = Math.max(0, (po.totalCost || 0) - paid);
+                  return (
+                    <tr key={po._id} className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors">
+                      <td className="px-6 py-4 font-mono font-bold text-amber-500">#{po.poNumber || po._id.slice(-6).toUpperCase()}</td>
+                      <td className="px-6 py-4 font-bold text-neutral-900 dark:text-white">
+                        {po.supplierId?.name || 'Direct Order'}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">
+                        {po.items.map((i) => `${i.inventoryItemId?.name || i.itemName} (${i.quantity})`).join(', ')}
+                      </td>
+                      <td className="px-6 py-4 font-extrabold text-neutral-900 dark:text-white">Rs. {po.totalCost}</td>
+                      <td className="px-6 py-4 text-xs">
+                        <div className="font-bold text-emerald-500">Paid: Rs. {paid}</div>
+                        {remaining > 0 ? (
+                          <div className="font-bold text-rose-500">Rem: Rs. {remaining}</div>
+                        ) : (
+                          <div className="text-neutral-400">Fully Paid</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${PAYMENT_BADGES[po.paymentStatus || 'unpaid']}`}>
+                          {(po.paymentStatus || 'unpaid').replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${STATUS_BADGES[po.status]}`}>
+                          {po.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        {po.status !== 'cancelled' && po.paymentStatus !== 'paid' && (
                           <button
-                            onClick={() => handleStatusUpdate(po._id, 'received')}
-                            disabled={receivingId === po._id}
-                            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition disabled:opacity-50 inline-flex items-center gap-1"
+                            onClick={() => openPayModal(po)}
+                            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-neutral-950 rounded-lg text-xs font-bold transition inline-flex items-center gap-1"
                           >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            {receivingId === po._id ? 'Receiving...' : 'Mark Received'}
+                            <DollarSign className="w-3.5 h-3.5" />
+                            Add Payment
                           </button>
+                        )}
+                        {po.status === 'pending' && (
                           <button
                             onClick={() => handleStatusUpdate(po._id, 'cancelled')}
-                            disabled={receivingId === po._id}
                             className="px-3 py-1.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg text-xs font-bold transition inline-flex items-center gap-1"
                           >
                             <XCircle className="w-3.5 h-3.5" />
                             Cancel
                           </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* PO Payment Modal */}
+      {payModalPO && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 pb-3">
+              <div>
+                <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
+                  Record PO Payment
+                </h2>
+                <p className="text-xs text-neutral-500">
+                  PO #{payModalPO.poNumber || payModalPO._id.slice(-6).toUpperCase()} — {payModalPO.supplierId?.name || 'Direct Supplier'}
+                </p>
+              </div>
+              <button onClick={closePayModal} className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl space-y-1 text-xs">
+              <div className="flex justify-between text-neutral-600 dark:text-neutral-400">
+                <span>Total Cost</span>
+                <span className="font-bold text-neutral-900 dark:text-white">Rs. {payModalPO.totalCost}</span>
+              </div>
+              <div className="flex justify-between text-emerald-500">
+                <span>Already Paid</span>
+                <span className="font-bold">Rs. {payModalPO.amountPaid || 0}</span>
+              </div>
+              <div className="flex justify-between text-rose-500 font-bold pt-1 border-t border-neutral-200 dark:border-neutral-800">
+                <span>Remaining Balance</span>
+                <span>Rs. {Math.max(0, (payModalPO.totalCost || 0) - (payModalPO.amountPaid || 0))}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleRecordPayment} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">
+                  Payment Amount (Rs.) *
+                </label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-base font-bold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+                <p className="text-[11px] text-neutral-400 mt-1">
+                  * Full payment will automatically mark PO as RECEIVED and update inventory stock & expenses.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-neutral-200 dark:border-neutral-800">
+                <button
+                  type="button"
+                  onClick={closePayModal}
+                  className="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={paying}
+                  className="px-5 py-2 text-sm font-bold bg-amber-500 hover:bg-amber-600 text-neutral-950 rounded-xl transition disabled:opacity-50"
+                >
+                  {paying ? 'Recording...' : 'Submit Payment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

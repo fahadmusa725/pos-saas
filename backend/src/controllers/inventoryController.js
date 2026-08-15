@@ -73,6 +73,45 @@ const updateInventoryItem = async (req, res) => {
     if (costPerUnit !== undefined) item.costPerUnit = Number(costPerUnit);
 
     await item.save();
+
+    // Auto sync menu items availability based on ingredient stock change
+    try {
+      const MenuItem = require('../models/MenuItem');
+      const InventoryItem = require('../models/InventoryItem');
+
+      const menuItemsWithIng = await MenuItem.find({
+        restaurantId: req.tenantId,
+        'recipe.inventoryItemId': item._id,
+      });
+
+      for (const mItem of menuItemsWithIng) {
+        let allInStock = true;
+        for (const ing of mItem.recipe) {
+          if (!ing.inventoryItemId) continue;
+          const ingId = ing.inventoryItemId.toString();
+          if (ingId === item._id.toString()) {
+            if (item.currentStock <= 0) {
+              allInStock = false;
+              break;
+            }
+          } else {
+            const otherInv = await InventoryItem.findById(ing.inventoryItemId);
+            if (!otherInv || otherInv.currentStock <= 0) {
+              allInStock = false;
+              break;
+            }
+          }
+        }
+
+        if (mItem.isAvailable !== allInStock) {
+          await MenuItem.findByIdAndUpdate(mItem._id, { isAvailable: allInStock });
+          console.log(`Inventory update synced menu item availability: ${mItem.name} -> isAvailable: ${allInStock}`);
+        }
+      }
+    } catch (syncErr) {
+      console.error('Silent menu item availability sync error:', syncErr.message);
+    }
+
     res.status(200).json({ success: true, data: item });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -4,6 +4,7 @@ const {
   getPurchaseOrders,
   createPurchaseOrder,
   updatePurchaseOrderStatus,
+  payPurchaseOrder,
 } = require('../controllers/purchaseOrderController');
 const { protect, checkPermission } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
@@ -16,5 +17,6 @@ router.route('/')
   .post(createPurchaseOrder);
 
 router.put('/:id/status', updatePurchaseOrderStatus);
+router.patch('/:id/pay', payPurchaseOrder);
 
 module.exports = router;

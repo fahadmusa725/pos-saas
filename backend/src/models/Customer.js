@@ -35,6 +35,12 @@ const customerSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // Outstanding credit balance (udhar) owed by the customer to the restaurant
+    creditBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true }
 );

@@ -22,7 +22,7 @@ const tableSchema = new mongoose.Schema(
     },
     section: {
       type: String,
-      enum: ['Indoor', 'Outdoor', 'Rooftop', 'VIP', 'Bar'],
+      trim: true,
       default: 'Indoor',
     },
   },
