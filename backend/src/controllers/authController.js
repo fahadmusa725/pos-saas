@@ -87,6 +87,18 @@ exports.login = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Account is deactivated' });
     }
 
+    // Check restaurant suspension for non-super-admin users
+    if (user.role !== 'super-admin' && user.restaurantId) {
+      const Restaurant = require('../models/Restaurant');
+      const restaurant = await Restaurant.findById(user.restaurantId);
+      if (restaurant && restaurant.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          message: 'Your restaurant account has been suspended. Please contact support.',
+        });
+      }
+    }
+
     const token = generateToken(user._id, user.role, user.restaurantId);
 
     res.status(200).json({

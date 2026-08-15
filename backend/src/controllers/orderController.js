@@ -7,6 +7,76 @@ const generateOrderNumber = () => {
   return `ORD-${timestamp}`;
 };
 
+// Helper function to validate stock levels for items with recipes
+const validateStockForItems = async (items, restaurantId) => {
+  const MenuItem = require('../models/MenuItem');
+  const InventoryItem = require('../models/InventoryItem');
+
+  // Aggregated required quantities per ingredient
+  const requiredStock = {};
+
+  for (const item of items) {
+    const menuItemId = item.menuItemId || item._id;
+    if (!menuItemId) continue;
+
+    const menuItem = await MenuItem.findOne({
+      _id: menuItemId,
+      restaurantId,
+    }).select('name recipe variants');
+
+    // ONLY check stock for menu items that have a non-empty recipe
+    if (menuItem && menuItem.recipe && menuItem.recipe.length > 0) {
+      // Find portion multiplier if a variant was selected
+      let multiplier = 1;
+      if (item.variant && menuItem.variants && menuItem.variants.length > 0) {
+        const foundVariant = menuItem.variants.find((v) => v.name === item.variant);
+        if (foundVariant && foundVariant.portionMultiplier) {
+          multiplier = Number(foundVariant.portionMultiplier);
+        }
+      }
+
+      const itemQty = Number(item.quantity) || 1;
+
+      for (const ingredient of menuItem.recipe) {
+        if (!ingredient.inventoryItemId || !ingredient.quantityUsed) continue;
+        const invId = ingredient.inventoryItemId.toString();
+        const reqQty = Number(ingredient.quantityUsed) * multiplier * itemQty;
+
+        requiredStock[invId] = (requiredStock[invId] || 0) + reqQty;
+      }
+    }
+  }
+
+  // Check required stock against database currentStock
+  for (const [invId, totalRequired] of Object.entries(requiredStock)) {
+    const invItem = await InventoryItem.findOne({ _id: invId, restaurantId });
+    if (invItem && invItem.currentStock < totalRequired) {
+      const avail = Math.max(0, invItem.currentStock);
+      throw new Error(
+        `Insufficient stock for ingredient: ${invItem.name}. Available: ${avail} ${invItem.unit || ''}, Required: ${totalRequired.toFixed(2)} ${invItem.unit || ''}`
+      );
+    }
+  }
+};
+
+// Helper function to auto-derive overall order status from item statuses
+const deriveOrderStatusFromItems = (order) => {
+  if (!order.items || order.items.length === 0) return order.status;
+
+  const statuses = order.items.map((i) => i.status || 'pending');
+
+  const allServed = statuses.every((s) => s === 'served');
+  if (allServed) return 'ready'; // Keep order active & table occupied until payment!
+
+  const allReadyOrServed = statuses.every((s) => s === 'ready' || s === 'served');
+  if (allReadyOrServed) return 'ready';
+
+  const anyInProgress = statuses.some((s) => ['preparing', 'ready', 'served'].includes(s));
+  if (anyInProgress) return 'preparing';
+
+  return 'pending';
+};
+
 // @desc Create order
 // @route POST /api/orders
 exports.createOrder = async (req, res) => {
@@ -16,6 +86,9 @@ exports.createOrder = async (req, res) => {
     if (!orderType || !items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'orderType and items are required' });
     }
+
+    // STRICT STOCK CHECK VALIDATION (only for items with recipes)
+    await validateStockForItems(items, req.tenantId);
 
     // Item-level discount bounds & Subtotal calculation
     let subtotal = 0;
@@ -29,7 +102,6 @@ exports.createOrder = async (req, res) => {
         const dType = item.itemDiscount.discountType;
         const dVal = Number(item.itemDiscount.value);
 
-        // Backend Bounds Validation for Item Discount
         if (dType === 'percentage') {
           if (dVal < 0 || dVal > 100) {
             throw new Error(`Item percentage discount must be between 0% and 100% for ${item.name}`);
@@ -52,6 +124,7 @@ exports.createOrder = async (req, res) => {
         ...item,
         price: baseItemPrice,
         quantity: itemQuantity,
+        round: 1,
         itemDiscount: item.itemDiscount || { value: 0 },
       };
     });
@@ -73,13 +146,24 @@ exports.createOrder = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid coupon code' });
       }
 
-      // Validates coupon against item-discounted subtotal
       finalCouponDiscount = calculateCouponDiscount(coupon, subtotal);
     }
 
-    // Total Calculation with Math.max(0, total) floor capping
     const rawTotal = subtotal + taxAmount - finalCouponDiscount;
     const total = Math.max(0, rawTotal);
+
+    if (paymentMethod === 'credit') {
+      if (!customerId) {
+        return res.status(400).json({
+          success: false,
+          message: 'A customer must be selected to place a Credit / Udhar order.',
+        });
+      }
+    }
+
+    const initialPaymentBreakdown = paymentMethod === 'credit'
+      ? [{ method: 'credit', amount: total, paidAt: new Date() }]
+      : [];
 
     const order = await Order.create({
       restaurantId: req.tenantId,
@@ -94,21 +178,92 @@ exports.createOrder = async (req, res) => {
       total,
       paymentMethod: paymentMethod || 'cash',
       paymentStatus: 'unpaid',
+      paymentBreakdown: initialPaymentBreakdown,
+      status: paymentMethod === 'credit' ? 'completed' : 'pending',
       isHeld: Boolean(isHeld),
       createdBy: req.user._id,
     });
 
-    // Agar dine-in hai to table ko occupied mark karo
+    // Increment customer credit balance if paid on credit
+    if (paymentMethod === 'credit' && customerId) {
+      const Customer = require('../models/Customer');
+      await Customer.findByIdAndUpdate(customerId, {
+        $inc: { creditBalance: total },
+      });
+      console.log(`Updated customer ${customerId} creditBalance: +Rs. ${total}`);
+    }
+
     if (orderType === 'dine-in' && tableId) {
       await Table.findByIdAndUpdate(tableId, { status: 'occupied' });
     }
 
-    // Real-time event bhejo Kitchen Display System ko
+    // Recipe Inventory Deduction with Variant Multiplier Scaling & Auto-Deactivation
+    try {
+      const MenuItem = require('../models/MenuItem');
+      const InventoryItem = require('../models/InventoryItem');
+
+      const depletedInventoryIds = new Set();
+
+      for (const item of processedItems) {
+        const menuItemId = item.menuItemId || item._id;
+        if (!menuItemId) continue;
+
+        const menuItem = await MenuItem.findOne({
+          _id: menuItemId,
+          restaurantId: req.tenantId,
+        }).select('recipe variants');
+
+        if (menuItem && menuItem.recipe && menuItem.recipe.length > 0) {
+          let multiplier = 1;
+          const variantName = item.variantName || item.variant;
+          if (variantName && menuItem.variants && menuItem.variants.length > 0) {
+            const foundVariant = menuItem.variants.find((v) => v.name === variantName);
+            if (foundVariant && foundVariant.portionMultiplier) {
+              multiplier = Number(foundVariant.portionMultiplier);
+            }
+          }
+
+          for (const ingredient of menuItem.recipe) {
+            if (!ingredient.inventoryItemId || !ingredient.quantityUsed) continue;
+            const totalDeduction = Number(ingredient.quantityUsed) * multiplier * (Number(item.quantity) || 1);
+            if (isNaN(totalDeduction) || totalDeduction <= 0) continue;
+
+            const updatedInv = await InventoryItem.findOneAndUpdate(
+              { _id: ingredient.inventoryItemId, restaurantId: req.tenantId },
+              { $inc: { currentStock: -totalDeduction } },
+              { new: true }
+            );
+
+            if (updatedInv && updatedInv.currentStock <= 0) {
+              depletedInventoryIds.add(ingredient.inventoryItemId.toString());
+            }
+          }
+        }
+      }
+
+      // Auto-Deactivate menu items if any ingredient's stock drops to 0 or below
+      if (depletedInventoryIds.size > 0) {
+        const depletedArray = Array.from(depletedInventoryIds);
+        const affectedMenuItems = await MenuItem.find({
+          restaurantId: req.tenantId,
+          isAvailable: true,
+          'recipe.inventoryItemId': { $in: depletedArray },
+        });
+
+        for (const mItem of affectedMenuItems) {
+          await MenuItem.findByIdAndUpdate(mItem._id, { isAvailable: false });
+          console.log(`Auto-deactivated menu item due to stock depletion (0 or less): ${mItem.name}`);
+        }
+      }
+    } catch (recipeErr) {
+      console.error('Silent inventory deduction/deactivation error:', recipeErr.message);
+    }
+
     req.io.to(req.tenantId.toString()).emit('newOrder', order);
 
     res.status(201).json({ success: true, data: order });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -162,15 +317,21 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
+    // Cancellation Guard: Cannot cancel a completed/served order
+    if (status === 'cancelled' && order.status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel a completed or fully served order',
+      });
+    }
+
     order.status = status;
     await order.save();
 
-    // Agar order complete/cancel ho gaya aur dine-in tha, to table free karo
-    if (['completed', 'cancelled'].includes(status) && order.tableId) {
+    if ((status === 'cancelled' || (status === 'completed' && order.paymentStatus === 'paid')) && order.tableId) {
       await Table.findByIdAndUpdate(order.tableId, { status: 'available' });
     }
 
-    // Real-time update bhejo (kitchen + waiter dono ke liye)
     req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
 
     res.status(200).json({ success: true, data: order });
@@ -179,7 +340,7 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
-// @desc Update single item status (kitchen use karega)
+// @desc Update single item status & AUTO-SYNC overall order status
 // @route PUT /api/orders/:orderId/items/:itemId/status
 exports.updateItemStatus = async (req, res) => {
   try {
@@ -198,9 +359,15 @@ exports.updateItemStatus = async (req, res) => {
     }
 
     item.status = status;
+
+    // AUTO-SYNC overall order status based on updated item statuses
+    const newDerivedStatus = deriveOrderStatusFromItems(order);
+    order.status = newDerivedStatus;
+
     await order.save();
 
     req.io.to(req.tenantId.toString()).emit('orderItemStatusUpdated', { orderId, itemId, status });
+    req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
 
     res.status(200).json({ success: true, data: order });
   } catch (error) {
@@ -246,26 +413,56 @@ exports.markAsPaid = async (req, res) => {
       newPayments = [{ method, amount: order.total }];
     }
 
-    // Validate overpayment: non-cash methods (card, online, other) cannot exceed remaining balance
-    const remainingBalance = Math.max(0, order.total - order.amountPaid);
+    // Check for Credit / Udhar payment method
+    let creditAmountTotal = 0;
+    const hasCreditPayment = newPayments.some((p) => p.method === 'credit');
+
+    if (hasCreditPayment) {
+      // Must have linked customer
+      const custId = order.customerId || req.body.customerId;
+      if (!custId) {
+        return res.status(400).json({
+          success: false,
+          message: 'A customer must be selected to record a Credit / Udhar order.',
+        });
+      }
+      if (req.body.customerId && !order.customerId) {
+        order.customerId = req.body.customerId;
+      }
+    }
+
+    // Validate overpayment: non-cash methods (card, online, credit) cannot exceed remaining balance
+    const remainingBalance = Math.max(0, order.total - (order.amountPaid || 0));
     let totalNewPaymentAmount = 0;
     let nonCashPaymentTotal = 0;
 
     for (let p of newPayments) {
-      if (!p.method || !p.amount || p.amount <= 0) {
+      if (!p.method || !p.amount || Number(p.amount) <= 0) {
         return res.status(400).json({ success: false, message: 'Invalid payment amount or method' });
       }
       totalNewPaymentAmount += Number(p.amount);
       if (p.method !== 'cash') {
         nonCashPaymentTotal += Number(p.amount);
       }
+      if (p.method === 'credit') {
+        creditAmountTotal += Number(p.amount);
+      }
     }
 
     if (nonCashPaymentTotal > remainingBalance) {
       return res.status(400).json({
         success: false,
-        message: `Non-cash payment amount (Rs. ${nonCashPaymentTotal}) cannot exceed the remaining balance (Rs. ${remainingBalance}). Overpayment is only allowed for Cash transactions to return change.`,
+        message: `Non-cash/Credit payment amount (Rs. ${nonCashPaymentTotal}) cannot exceed the remaining balance (Rs. ${remainingBalance}). Overpayment is only allowed for Cash transactions.`,
       });
+    }
+
+    // Increment customer creditBalance for credit payments
+    if (creditAmountTotal > 0 && order.customerId) {
+      const Customer = require('../models/Customer');
+      await Customer.findByIdAndUpdate(order.customerId, {
+        $inc: { creditBalance: creditAmountTotal },
+      });
+      console.log(`Updated customer ${order.customerId} creditBalance: +Rs. ${creditAmountTotal}`);
     }
 
     // Append to existing breakdown
@@ -278,20 +475,35 @@ exports.markAsPaid = async (req, res) => {
       });
     });
 
-    const accumulatedPaid = order.paymentBreakdown.reduce((sum, p) => sum + p.amount, 0);
-    order.amountPaid = accumulatedPaid;
+    // Compute cash/card/online paid vs credit
+    const realMoneyPaid = order.paymentBreakdown
+      .filter((p) => p.method !== 'credit')
+      .reduce((sum, p) => sum + p.amount, 0);
 
-    if (accumulatedPaid >= order.total) {
-      order.paymentStatus = 'paid';
+    const totalCovered = order.paymentBreakdown.reduce((sum, p) => sum + p.amount, 0);
+
+    // If total covered (real money + credit) >= order.total, order is fulfilled and completed
+    if (totalCovered >= order.total) {
       order.status = 'completed';
-      order.changeAmount = changeAmount ? Number(changeAmount) : Math.max(0, accumulatedPaid - order.total);
+      order.changeAmount = changeAmount ? Number(changeAmount) : Math.max(0, realMoneyPaid - order.total);
+
+      if (realMoneyPaid >= order.total) {
+        order.paymentStatus = 'paid';
+      } else if (realMoneyPaid > 0) {
+        order.paymentStatus = 'partially_paid';
+      } else {
+        order.paymentStatus = 'unpaid'; // 100% credit
+      }
+
+      order.amountPaid = realMoneyPaid;
 
       // Table Status Sync: Free occupied table upon order completion
       if (order.tableId) {
         await Table.findByIdAndUpdate(order.tableId, { status: 'available' });
       }
-    } else if (accumulatedPaid > 0) {
+    } else if (totalCovered > 0) {
       order.paymentStatus = 'partially_paid';
+      order.amountPaid = realMoneyPaid;
     }
 
     // Set dominant payment method name
@@ -308,7 +520,152 @@ exports.markAsPaid = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Payment processed successfully',
+      message: hasCreditPayment ? 'Credit order completed & udhar recorded!' : 'Payment processed successfully',
+      data: order,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc Add items to an existing open order (Running Tab)
+// @route POST /api/orders/:id/add-items
+exports.addItemsToOrder = async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Items array is required' });
+    }
+
+    const order = await Order.findOne({ _id: req.params.id, restaurantId: req.tenantId });
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.paymentStatus === 'paid' || order.status === 'completed' || order.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Cannot add items to a completed or paid order' });
+    }
+
+    // STRICT STOCK CHECK VALIDATION for newly added items
+    await validateStockForItems(items, req.tenantId);
+
+    // Calculate round number for running tab additions
+    const maxExistingRound = (order.items || []).reduce((max, i) => Math.max(max, i.round || 1), 1);
+    const nextRound = maxExistingRound + 1;
+
+    let addedSubtotal = 0;
+    const newProcessedItems = items.map((item) => {
+      const baseItemPrice = Number(item.price);
+      const addOnsTotal = (item.addOns || []).reduce((sum, a) => sum + Number(a.price), 0);
+      const itemQuantity = Number(item.quantity) || 1;
+
+      let itemDiscountAmount = 0;
+      if (item.itemDiscount && item.itemDiscount.value > 0) {
+        const dType = item.itemDiscount.discountType;
+        const dVal = Number(item.itemDiscount.value);
+        if (dType === 'percentage') {
+          itemDiscountAmount = (baseItemPrice * (dVal / 100)) * itemQuantity;
+        } else if (dType === 'fixed') {
+          const fixedPerUnit = Math.min(dVal, baseItemPrice);
+          itemDiscountAmount = fixedPerUnit * itemQuantity;
+        }
+      }
+
+      const rawItemTotal = (baseItemPrice + addOnsTotal) * itemQuantity;
+      const netItemTotal = Math.max(0, rawItemTotal - itemDiscountAmount);
+      addedSubtotal += netItemTotal;
+
+      return {
+        ...item,
+        price: baseItemPrice,
+        quantity: itemQuantity,
+        status: 'pending',
+        round: nextRound,
+        addedAt: new Date(),
+        itemDiscount: item.itemDiscount || { value: 0 },
+      };
+    });
+
+    order.items.push(...newProcessedItems);
+
+    order.subtotal = (order.subtotal || 0) + addedSubtotal;
+    const rawTotal = order.subtotal + (order.tax || 0) - (order.discount || 0);
+    order.total = Math.max(0, rawTotal);
+
+    if (order.status === 'ready' || order.status === 'preparing') {
+      order.status = 'pending';
+    }
+
+    await order.save();
+
+    // Recipe Inventory Deduction for newly added items with Portion Multiplier & Auto-Deactivation
+    try {
+      const MenuItem = require('../models/MenuItem');
+      const InventoryItem = require('../models/InventoryItem');
+
+      const depletedInventoryIds = new Set();
+
+      for (const item of newProcessedItems) {
+        const menuItemId = item.menuItemId || item._id;
+        if (!menuItemId) continue;
+
+        const menuItem = await MenuItem.findOne({
+          _id: menuItemId,
+          restaurantId: req.tenantId,
+        }).select('recipe variants');
+
+        if (menuItem && menuItem.recipe && menuItem.recipe.length > 0) {
+          let multiplier = 1;
+          const variantName = item.variantName || item.variant;
+          if (variantName && menuItem.variants && menuItem.variants.length > 0) {
+            const foundVariant = menuItem.variants.find((v) => v.name === variantName);
+            if (foundVariant && foundVariant.portionMultiplier) {
+              multiplier = Number(foundVariant.portionMultiplier);
+            }
+          }
+
+          for (const ingredient of menuItem.recipe) {
+            if (!ingredient.inventoryItemId || !ingredient.quantityUsed) continue;
+            const totalDeduction = Number(ingredient.quantityUsed) * multiplier * (Number(item.quantity) || 1);
+            if (isNaN(totalDeduction) || totalDeduction <= 0) continue;
+
+            const updatedInv = await InventoryItem.findOneAndUpdate(
+              { _id: ingredient.inventoryItemId, restaurantId: req.tenantId },
+              { $inc: { currentStock: -totalDeduction } },
+              { new: true }
+            );
+
+            if (updatedInv && updatedInv.currentStock <= 0) {
+              depletedInventoryIds.add(ingredient.inventoryItemId.toString());
+            }
+          }
+        }
+      }
+
+      // Auto-Deactivate menu items if any ingredient's stock drops to 0 or below
+      if (depletedInventoryIds.size > 0) {
+        const depletedArray = Array.from(depletedInventoryIds);
+        const affectedMenuItems = await MenuItem.find({
+          restaurantId: req.tenantId,
+          isAvailable: true,
+          'recipe.inventoryItemId': { $in: depletedArray },
+        });
+
+        for (const mItem of affectedMenuItems) {
+          await MenuItem.findByIdAndUpdate(mItem._id, { isAvailable: false });
+          console.log(`Auto-deactivated menu item due to stock depletion (0 or less): ${mItem.name}`);
+        }
+      }
+    } catch (recipeErr) {
+      console.error('Silent inventory deduction error on add items:', recipeErr.message);
+    }
+
+    req.io.to(req.tenantId.toString()).emit('newOrder', order);
+    req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
+
+    res.status(200).json({
+      success: true,
+      message: 'Items added to order successfully',
       data: order,
     });
   } catch (error) {

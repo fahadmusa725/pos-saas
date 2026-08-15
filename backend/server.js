@@ -18,6 +18,8 @@ const purchaseOrderRoutes = require('./src/routes/purchaseOrderRoutes');
 const expenseRoutes = require('./src/routes/expenseRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
 const couponRoutes = require('./src/routes/couponRoutes');
+const settingsRoutes = require('./src/routes/settingsRoutes');
+const superAdminRoutes = require('./src/routes/superAdminRoutes');
 
 dotenv.config();
 connectDB();
@@ -70,6 +72,8 @@ app.use('/api/purchase-orders', purchaseOrderRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/super-admin', superAdminRoutes);
 
 const PORT = process.env.PORT || 5000;
 

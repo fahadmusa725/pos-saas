@@ -18,3 +18,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
+
+/* ScreenNavPanel sidebar slide-in animation */
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.22s cubic-bezier(0.4, 0, 0.2, 1) both;
+}

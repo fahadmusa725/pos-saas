@@ -1,28 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
-import { CreditCard, Tag, Plus, Trash2, CheckCircle2, X } from 'lucide-react';
+import { CreditCard, Tag, Plus, Trash2, X, UserCheck } from 'lucide-react';
 
-const PAYMENT_METHODS = ['cash', 'card', 'online'];
+const ALL_PAYMENT_METHODS = [
+  { id: 'cash', label: 'Cash' },
+  { id: 'card', label: 'Card' },
+  { id: 'online', label: 'Online' },
+  { id: 'credit', label: 'Credit / Udhar' },
+];
 
-function CheckoutModal({ order, onClose, onSubmit }) {
+function CheckoutModal({ order, onClose, onSubmit, userRole }) {
+  // Determine allowed payment methods based on role (credit only for admin / cashier)
+  const isCreditAllowed = !userRole || ['restaurant-admin', 'super-admin', 'cashier'].includes(userRole);
+  const availableMethods = isCreditAllowed
+    ? ALL_PAYMENT_METHODS
+    : ALL_PAYMENT_METHODS.filter((m) => m.id !== 'credit');
+
   const [payments, setPayments] = useState([{ method: 'cash', amount: order.total }]);
   const [couponCode, setCouponCode] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const calculateDiscount = () => {
-    if (!appliedCoupon) return 0;
-    const { type, value, maxDiscountAmount } = appliedCoupon;
-    let disc = type === 'percentage' ? (order.total * value) / 100 : value;
-    if (maxDiscountAmount && maxDiscountAmount > 0) {
-      disc = Math.min(disc, maxDiscountAmount);
-    }
-    return Math.min(disc, order.total);
-  };
+  // Customer selection state inside modal if order has no customer
+  const [modalCustomerId, setModalCustomerId] = useState(order.customerId?._id || order.customerId || '');
+  const [customers, setCustomers] = useState([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
 
-  const couponDiscount = calculateDiscount();
+  useEffect(() => {
+    if (isCreditAllowed && !modalCustomerId) {
+      setLoadingCustomers(true);
+      api
+        .get('/customers')
+        .then((res) => setCustomers(res.data.data || []))
+        .catch(() => setCustomers([]))
+        .finally(() => setLoadingCustomers(false));
+    }
+  }, [isCreditAllowed, modalCustomerId]);
+
+  const couponDiscount = appliedCoupon
+    ? Math.min(appliedCoupon.discountAmount ?? 0, order.total)
+    : 0;
   const finalTotal = Math.max(0, order.total - couponDiscount);
   const totalEntered = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const remaining = finalTotal - totalEntered;
@@ -35,7 +54,7 @@ function CheckoutModal({ order, onClose, onSubmit }) {
     try {
       const res = await api.post('/coupons/validate', {
         code: couponCode.trim(),
-        orderSubtotal: order.total,
+        orderTotal: order.total,
       });
       setAppliedCoupon(res.data.data);
       toast.success('Coupon applied!');
@@ -56,6 +75,11 @@ function CheckoutModal({ order, onClose, onSubmit }) {
     setPayments([...payments, { method: 'card', amount: remaining > 0 ? remaining : 0 }]);
   };
 
+  const handlePutRemainingOnCredit = () => {
+    if (remaining <= 0) return;
+    setPayments([...payments, { method: 'credit', amount: remaining }]);
+  };
+
   const handleRemovePayment = (index) => {
     if (payments.length === 1) return;
     setPayments(payments.filter((_, i) => i !== index));
@@ -63,12 +87,30 @@ function CheckoutModal({ order, onClose, onSubmit }) {
 
   const handlePaymentChange = (index, field, value) => {
     const updated = [...payments];
-    updated[index][field] = field === 'amount' ? Number(value) : value;
+    if (field === 'method') {
+      updated[index].method = value;
+      if (value === 'credit') {
+        const otherSum = updated.filter((_, i) => i !== index).reduce((s, p) => s + (Number(p.amount) || 0), 0);
+        const rem = Math.max(0, finalTotal - otherSum);
+        updated[index].amount = rem > 0 ? rem : finalTotal;
+      }
+    } else {
+      updated[index][field] = Number(value);
+    }
     setPayments(updated);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const hasCredit = payments.some((p) => p.method === 'credit');
+    const effectiveCustomerId = order.customerId?._id || order.customerId || modalCustomerId;
+
+    if (hasCredit && !effectiveCustomerId) {
+      toast.error('Credit / Udhar payment requires selecting a customer!');
+      return;
+    }
+
     if (totalEntered < finalTotal) {
       toast.error(`Insufficient payment amount. Remaining: Rs. ${remaining}`);
       return;
@@ -80,6 +122,7 @@ function CheckoutModal({ order, onClose, onSubmit }) {
         payments: payments.map((p) => ({ method: p.method, amount: Number(p.amount) })),
         changeAmount,
         couponCode: appliedCoupon ? appliedCoupon.code : undefined,
+        customerId: effectiveCustomerId || undefined,
       });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Payment submission failed');
@@ -87,6 +130,9 @@ function CheckoutModal({ order, onClose, onSubmit }) {
       setSubmitting(false);
     }
   };
+
+  const hasCreditInPayments = payments.some((p) => p.method === 'credit');
+  const activeCustomerName = order.customerId?.name || customers.find((c) => c._id === modalCustomerId)?.name;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
@@ -105,6 +151,38 @@ function CheckoutModal({ order, onClose, onSubmit }) {
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Customer Info / Picker if Udhar is used */}
+        {hasCreditInPayments && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2 text-xs">
+            <div className="flex items-center justify-between font-bold text-amber-500">
+              <span className="flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4" />
+                Customer for Udhar Record:
+              </span>
+              {activeCustomerName && (
+                <span className="font-extrabold underline">{activeCustomerName}</span>
+              )}
+            </div>
+
+            {!(order.customerId?._id || order.customerId) && (
+              <div>
+                <select
+                  value={modalCustomerId}
+                  onChange={(e) => setModalCustomerId(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-neutral-100 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                >
+                  <option value="">-- Select Customer --</option>
+                  {customers.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name} ({c.phone})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Coupon Code Input */}
         <div className="p-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl space-y-2">
@@ -187,8 +265,8 @@ function CheckoutModal({ order, onClose, onSubmit }) {
                   onChange={(e) => handlePaymentChange(idx, 'method', e.target.value)}
                   className="px-3 py-2 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-xl text-xs uppercase font-semibold"
                 >
-                  {PAYMENT_METHODS.map((m) => (
-                    <option key={m} value={m}>{m}</option>
+                  {availableMethods.map((m) => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
 
@@ -214,6 +292,17 @@ function CheckoutModal({ order, onClose, onSubmit }) {
               </div>
             ))}
           </div>
+
+          {/* Quick Put Remaining on Udhar Button */}
+          {remaining > 0 && isCreditAllowed && (
+            <button
+              type="button"
+              onClick={handlePutRemainingOnCredit}
+              className="w-full py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
+            >
+              <Plus className="w-4 h-4" /> Put Remaining Rs. {remaining} on Credit / Udhar
+            </button>
+          )}
 
           {/* Balance / Change Calculation */}
           <div className="p-3 bg-neutral-100 dark:bg-neutral-950 rounded-xl flex justify-between items-center text-xs font-bold">

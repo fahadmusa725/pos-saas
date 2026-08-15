@@ -15,6 +15,11 @@ import PurchaseOrders from './pages/PurchaseOrders';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
 import Coupons from './pages/Coupons';
+import Settings from './pages/Settings';
+import WaiterScreen from './pages/WaiterScreen';
+import SuperAdminLayout from './components/SuperAdminLayout';
+import SuperAdminOverview from './pages/SuperAdminOverview';
+import RestaurantsList from './pages/RestaurantsList';
 import DashboardLayout from './components/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -43,6 +48,15 @@ function App() {
         />
 
         <Route
+          path="/waiter"
+          element={
+            <ProtectedRoute permissionId="waiter-screen">
+              <WaiterScreen />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
@@ -56,6 +70,7 @@ function App() {
           <Route path="orders" element={<ProtectedRoute permissionId="orders"><Orders /></ProtectedRoute>} />
           <Route path="tables" element={<ProtectedRoute permissionId="tables"><Tables /></ProtectedRoute>} />
           <Route path="staff" element={<ProtectedRoute permissionId="staff"><Staff /></ProtectedRoute>} />
+          <Route path="waiter-screen" element={<ProtectedRoute permissionId="waiter-screen"><WaiterScreen /></ProtectedRoute>} />
           <Route path="customers" element={<ProtectedRoute permissionId="customers"><Customers /></ProtectedRoute>} />
           <Route path="suppliers" element={<ProtectedRoute permissionId="suppliers"><Suppliers /></ProtectedRoute>} />
           <Route path="inventory" element={<ProtectedRoute permissionId="inventory"><Inventory /></ProtectedRoute>} />
@@ -63,6 +78,20 @@ function App() {
           <Route path="expenses" element={<ProtectedRoute permissionId="expenses"><Expenses /></ProtectedRoute>} />
           <Route path="reports" element={<ProtectedRoute permissionId="reports"><Reports /></ProtectedRoute>} />
           <Route path="coupons" element={<ProtectedRoute permissionId="coupons"><Coupons /></ProtectedRoute>} />
+          <Route path="settings" element={<ProtectedRoute permissionId="settings"><Settings /></ProtectedRoute>} />
+        </Route>
+
+        {/* Super Admin Panel Routes */}
+        <Route
+          path="/super-admin"
+          element={
+            <ProtectedRoute allowedRoles={['super-admin']}>
+              <SuperAdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<SuperAdminOverview />} />
+          <Route path="restaurants" element={<RestaurantsList />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" />} />

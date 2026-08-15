@@ -20,13 +20,41 @@ const restaurantSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
+      default: '',
     },
     address: {
       type: String,
+      default: '',
     },
     logo: {
       type: String,
       default: '',
+    },
+    taxRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    receiptFooterMessage: {
+      type: String,
+      default: 'Thank you for dining with us! Visit again soon.',
+    },
+    currency: {
+      type: String,
+      default: 'Rs.',
+    },
+    showBarcodeOnReceipt: {
+      type: Boolean,
+      default: true,
+    },
+    enableSoundAlerts: {
+      type: Boolean,
+      default: true,
+    },
+    urgentOrderMinutes: {
+      type: Number,
+      default: 15,
     },
     subscriptionStatus: {
       type: String,

@@ -33,12 +33,13 @@ const supplierSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
-    // Free-text tags e.g. "Dairy, Vegetables, Bread"
-    itemsSupplied: {
-      type: String,
-      trim: true,
-      default: '',
-    },
+    // Structured items supplied by this supplier
+    itemsSupplied: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'InventoryItem',
+      },
+    ],
   },
   { timestamps: true }
 );

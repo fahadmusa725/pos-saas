@@ -9,6 +9,7 @@ const APP_MODULES = [
   { id: 'tables', name: 'Tables' },
   { id: 'staff', name: 'Staff Management' },
   { id: 'kds', name: 'Kitchen Display (KDS)' },
+  { id: 'waiter-screen', name: 'Waiter Screen' },
   { id: 'customers', name: 'Customers' },
   { id: 'suppliers', name: 'Suppliers' },
   { id: 'inventory', name: 'Inventory' },
@@ -16,12 +17,13 @@ const APP_MODULES = [
   { id: 'expenses', name: 'Expenses' },
   { id: 'reports', name: 'Reports & Analytics' },
   { id: 'coupons', name: 'Coupons & Discounts' },
+  { id: 'settings', name: 'Settings' },
 ];
 
 const DEFAULT_ROLE_PERMISSIONS = {
   // cashier: gets 'customers' access — needed for phone lookup during order creation
   cashier: ['orders', 'tables', 'customers'],
-  waiter: ['orders', 'tables', 'kds'],
+  waiter: ['orders', 'tables', 'kds', 'waiter-screen'],
   kitchen: ['kds'],
   manager: APP_MODULES.filter((m) => m.id !== 'staff').map((m) => m.id),
   // restaurant-admin always gets all modules automatically
