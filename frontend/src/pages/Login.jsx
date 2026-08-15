@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
-import { Store, Key, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Store, Key, Mail, ArrowRight, Eye, EyeOff, Building, Phone } from 'lucide-react';
 
 function Login() {
+  const [mode, setMode]                 = useState('login'); // 'login' | 'register'
   const [email, setEmail]               = useState('');
   const [password, setPassword]         = useState('');
+  const [restaurantName, setRestaurantName] = useState('');
+  const [phone, setPhone]               = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError]               = useState('');
   const [loading, setLoading]           = useState(false);
@@ -20,16 +23,28 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/login', { email, password });
-      const { user, token } = response.data.data;
-      login(user, token);
-      if (user?.role === 'super-admin') {
-        navigate('/super-admin');
+      if (mode === 'login') {
+        const response = await api.post('/auth/login', { email, password });
+        const { user, token } = response.data.data;
+        login(user, token);
+        if (user?.role === 'super-admin') {
+          navigate('/super-admin');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
+        const response = await api.post('/auth/register-restaurant', {
+          restaurantName,
+          email,
+          password,
+          phone,
+        });
+        const { user, token } = response.data.data;
+        login(user, token);
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Check your credentials.');
+      setError(err.response?.data?.message || 'Authentication failed. Check your input.');
     } finally {
       setLoading(false);
     }
@@ -48,8 +63,34 @@ function Login() {
             DineFlow
           </h1>
           <p className="text-xs font-semibold tracking-wider text-amber-600 dark:text-amber-400 uppercase">
-            SIGN IN TO YOUR DASHBOARD
+            {mode === 'login' ? 'SIGN IN TO YOUR DASHBOARD' : 'REGISTER NEW RESTAURANT'}
           </p>
+        </div>
+
+        {/* Toggle Tabs */}
+        <div className="flex bg-neutral-100 dark:bg-neutral-800 p-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => { setMode('login'); setError(''); }}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${
+              mode === 'login'
+                ? 'bg-white dark:bg-neutral-900 text-amber-600 dark:text-amber-400 shadow-xs'
+                : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode('register'); setError(''); }}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${
+              mode === 'register'
+                ? 'bg-white dark:bg-neutral-900 text-amber-600 dark:text-amber-400 shadow-xs'
+                : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'
+            }`}
+          >
+            Register Restaurant
+          </button>
         </div>
 
         {error && (
@@ -59,6 +100,43 @@ function Login() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {mode === 'register' && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
+                  Restaurant Name
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={restaurantName}
+                    onChange={(e) => setRestaurantName(e.target.value)}
+                    required
+                    className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500 transition"
+                    placeholder="e.g. Jade Garden"
+                  />
+                  <Building className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500 transition"
+                    placeholder="e.g. +92 300 1234567"
+                  />
+                  <Phone className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
+                </div>
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
               Email Address
@@ -106,7 +184,7 @@ function Login() {
             disabled={loading}
             className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-neutral-950 font-extrabold rounded-xl transition-all disabled:opacity-50 text-sm shadow-xs flex items-center justify-center gap-2"
           >
-            <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
+            <span>{loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Restaurant Account'}</span>
             {!loading && <ArrowRight className="w-4 h-4" />}
           </button>
         </form>
