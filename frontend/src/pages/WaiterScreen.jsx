@@ -69,7 +69,8 @@ function WaiterScreen() {
     fetchReadyOrders();
 
     // Socket.io real-time connection
-    const socket = io('http://localhost:5000');
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    const socket = io(socketUrl);
     socketRef.current = socket;
 
     socket.on('connect', () => {
