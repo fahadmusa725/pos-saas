@@ -5,6 +5,12 @@ const InventoryItem = require('../models/InventoryItem');
 // @access  Private (restaurant-admin)
 const getInventoryItems = async (req, res) => {
   try {
+    // Backfill existing inventory items without a category
+    await InventoryItem.updateMany(
+      { restaurantId: req.tenantId, $or: [{ category: { $exists: false } }, { category: null }, { category: '' }] },
+      { $set: { category: 'Other' } }
+    );
+
     const items = await InventoryItem.find({ restaurantId: req.tenantId }).sort({ name: 1 });
     res.status(200).json({ success: true, count: items.length, data: items });
   } catch (error) {
@@ -33,7 +39,7 @@ const getLowStockItems = async (req, res) => {
 // @access  Private (restaurant-admin)
 const createInventoryItem = async (req, res) => {
   try {
-    const { name, unit, currentStock, reorderLevel, costPerUnit } = req.body;
+    const { name, unit, currentStock, reorderLevel, costPerUnit, category } = req.body;
 
     if (!name || !unit) {
       return res.status(400).json({ success: false, message: 'Name and unit are required' });
@@ -46,6 +52,7 @@ const createInventoryItem = async (req, res) => {
       currentStock: currentStock !== undefined ? Number(currentStock) : 0,
       reorderLevel: reorderLevel !== undefined ? Number(reorderLevel) : 0,
       costPerUnit: costPerUnit !== undefined ? Number(costPerUnit) : 0,
+      category: category || 'Other',
     });
 
     res.status(201).json({ success: true, data: item });
@@ -59,7 +66,7 @@ const createInventoryItem = async (req, res) => {
 // @access  Private (restaurant-admin)
 const updateInventoryItem = async (req, res) => {
   try {
-    const { name, unit, currentStock, reorderLevel, costPerUnit } = req.body;
+    const { name, unit, currentStock, reorderLevel, costPerUnit, category } = req.body;
 
     const item = await InventoryItem.findOne({ _id: req.params.id, restaurantId: req.tenantId });
     if (!item) {
@@ -71,6 +78,7 @@ const updateInventoryItem = async (req, res) => {
     if (currentStock !== undefined) item.currentStock = Number(currentStock);
     if (reorderLevel !== undefined) item.reorderLevel = Number(reorderLevel);
     if (costPerUnit !== undefined) item.costPerUnit = Number(costPerUnit);
+    if (category !== undefined) item.category = category;
 
     await item.save();
 

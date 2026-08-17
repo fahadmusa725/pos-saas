@@ -38,8 +38,12 @@ const getExpenses = async (req, res) => {
 // @access  Private (restaurant-admin)
 const getExpenseSummary = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, category } = req.query;
     const matchStage = { restaurantId: new mongoose.Types.ObjectId(req.tenantId) };
+
+    if (category) {
+      matchStage.category = category;
+    }
 
     if (startDate || endDate) {
       matchStage.date = {};

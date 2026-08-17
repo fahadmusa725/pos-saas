@@ -7,6 +7,6 @@ const { setTenant } = require('../middleware/tenantMiddleware');
 router.use(protect, setTenant);
 
 router.get('/', getSettings);
-router.put('/', authorize('restaurant-admin'), updateSettings);
+router.put('/', authorize('restaurant-admin', 'super-admin', 'manager'), updateSettings);
 
 module.exports = router;

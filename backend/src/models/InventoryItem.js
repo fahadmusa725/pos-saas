@@ -32,6 +32,23 @@ const inventoryItemSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    category: {
+      type: String,
+      enum: [
+        'Dairy',
+        'Vegetables',
+        'Meat & Poultry',
+        'Seafood',
+        'Grains & Rice',
+        'Spices & Seasonings',
+        'Beverages',
+        'Oils & Condiments',
+        'Bakery',
+        'Frozen',
+        'Other',
+      ],
+      default: 'Other',
+    },
   },
   { timestamps: true }
 );

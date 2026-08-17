@@ -178,7 +178,7 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
 
             {order.tax > 0 && (
               <div className="flex justify-between text-neutral-700">
-                <span>Tax / GST:</span>
+                <span>Tax / GST ({settings?.taxRate ?? 0}%):</span>
                 <span>+Rs. {order.tax}</span>
               </div>
             )}

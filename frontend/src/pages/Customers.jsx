@@ -159,7 +159,7 @@ function Customers() {
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2">
-            <span>👤 Customer Directory & Accounts</span>
+            <span>Customer Directory & Accounts</span>
           </h1>
           <p className="text-xs md:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
             Manage customer profiles, tab/receivable balances, and view order history
