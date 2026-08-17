@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import ConfirmModal from '../components/ConfirmModal';
-import { UtensilsCrossed, Plus, Trash2, Leaf, Pencil, X, Check, Package, Layers, Link, Upload, ChevronDown, ChevronUp } from 'lucide-react';
+import { UtensilsCrossed, Plus, Trash2, Pencil, X, Check, Package, Layers, Link, Upload, ChevronDown, ChevronUp } from 'lucide-react';
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB
 
@@ -197,6 +197,24 @@ function MenuItems() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Frontend recipe quantity validation
+    if (form.recipe && form.recipe.length > 0) {
+      for (const ing of form.recipe) {
+        if (ing.inventoryItemId || ing.quantityUsed) {
+          if (!ing.inventoryItemId) {
+            toast.error('Please select an ingredient for each recipe row');
+            return;
+          }
+          if (!ing.quantityUsed || isNaN(Number(ing.quantityUsed)) || Number(ing.quantityUsed) <= 0) {
+            const inv = inventoryItems.find((i) => i._id === ing.inventoryItemId);
+            toast.error(`Please enter quantity for ${inv?.name || 'selected ingredient'}`);
+            return;
+          }
+        }
+      }
+    }
+
     setSubmitting(true);
     try {
       const cleanRecipe = form.recipe
@@ -226,7 +244,7 @@ function MenuItems() {
         toast.success('Menu item created!');
       }
       closeModal();
-      fetchData();
+      await fetchData();
     } catch (err) {
       toast.error(err.response?.data?.message || `Failed to ${editingId ? 'update' : 'create'} menu item`);
     } finally {
@@ -244,7 +262,7 @@ function MenuItems() {
       await api.delete(`/menu-items/${deleteTargetId}`);
       setConfirmOpen(false);
       setDeleteTargetId(null);
-      fetchData();
+      await fetchData();
       toast.success('Menu item deleted');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete menu item');
@@ -384,11 +402,6 @@ function MenuItems() {
                               {item.isSpecialDeal && (
                                 <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30">
                                   🔥 Special Deal
-                                </span>
-                              )}
-                              {item.isVeg && (
-                                <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                  Veg
                                 </span>
                               )}
                             </div>
@@ -659,12 +672,6 @@ function MenuItems() {
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between pt-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-neutral-300 cursor-pointer select-none">
-                    <input type="checkbox" name="isVeg" checked={form.isVeg} onChange={handleChange} className="w-4 h-4 rounded border-neutral-700 text-amber-500 focus:ring-amber-500" />
-                    <span className="flex items-center gap-1"><Leaf className="w-4 h-4 text-emerald-500" /> Vegetarian Item</span>
-                  </label>
-                </div>
               </form>
             </div>
 

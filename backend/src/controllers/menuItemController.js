@@ -10,7 +10,15 @@ exports.createMenuItem = async (req, res) => {
       return res.status(400).json({ success: false, message: 'categoryId, name and price are required' });
     }
 
-    const menuItem = await MenuItem.create({
+    if (Array.isArray(recipe) && recipe.length > 0) {
+      for (const r of recipe) {
+        if (!r.inventoryItemId || !r.quantityUsed || isNaN(Number(r.quantityUsed)) || Number(r.quantityUsed) <= 0) {
+          return res.status(400).json({ success: false, message: 'Each recipe ingredient must have a valid inventory item and quantity greater than 0' });
+        }
+      }
+    }
+
+    let menuItem = await MenuItem.create({
       restaurantId: req.tenantId,
       categoryId,
       name,
@@ -25,6 +33,10 @@ exports.createMenuItem = async (req, res) => {
       isVeg,
       recipe: recipe || [],
     });
+
+    menuItem = await MenuItem.findById(menuItem._id)
+      .populate('categoryId', 'name')
+      .populate('recipe.inventoryItemId', 'name unit currentStock reorderLevel');
 
     res.status(201).json({ success: true, data: menuItem });
   } catch (error) {
@@ -107,6 +119,14 @@ exports.updateMenuItem = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Menu item not found' });
     }
 
+    if (req.body.recipe !== undefined && Array.isArray(req.body.recipe) && req.body.recipe.length > 0) {
+      for (const r of req.body.recipe) {
+        if (!r.inventoryItemId || !r.quantityUsed || isNaN(Number(r.quantityUsed)) || Number(r.quantityUsed) <= 0) {
+          return res.status(400).json({ success: false, message: 'Each recipe ingredient must have a valid inventory item and quantity greater than 0' });
+        }
+      }
+    }
+
     const fields = ['categoryId', 'name', 'description', 'price', 'dealPrice', 'isSpecialDeal', 'emoji', 'image', 'variants', 'addOns', 'isVeg', 'isAvailable', 'displayOrder', 'recipe'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -116,7 +136,11 @@ exports.updateMenuItem = async (req, res) => {
 
     await menuItem.save();
 
-    res.status(200).json({ success: true, data: menuItem });
+    const updatedItem = await MenuItem.findById(menuItem._id)
+      .populate('categoryId', 'name')
+      .populate('recipe.inventoryItemId', 'name unit currentStock reorderLevel');
+
+    res.status(200).json({ success: true, data: updatedItem });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

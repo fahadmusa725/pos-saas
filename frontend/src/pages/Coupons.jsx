@@ -168,17 +168,34 @@ function Coupons() {
                       {c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : 'Never'}
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => handleToggleStatus(c._id)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition ${
-                          c.isActive
-                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20'
-                            : 'bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500/20'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${c.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                        {c.isActive ? 'Active' : 'Disabled'}
-                      </button>
+                      {(() => {
+                        const isExpired = Boolean(c.expiryDate && new Date(c.expiryDate) < new Date());
+                        let statusText = 'Disabled';
+                        let badgeStyle = 'bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500/20';
+                        let dotStyle = 'bg-rose-500';
+
+                        if (c.isActive) {
+                          if (isExpired) {
+                            statusText = 'Expired';
+                            badgeStyle = 'bg-neutral-500/10 text-neutral-400 border-neutral-500/20 hover:bg-neutral-500/20';
+                            dotStyle = 'bg-neutral-400';
+                          } else {
+                            statusText = 'Active';
+                            badgeStyle = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20';
+                            dotStyle = 'bg-emerald-500';
+                          }
+                        }
+
+                        return (
+                          <button
+                            onClick={() => handleToggleStatus(c._id)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition ${badgeStyle}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${dotStyle}`} />
+                            {statusText}
+                          </button>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4 text-right space-x-1">
                       <button
