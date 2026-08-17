@@ -5,7 +5,8 @@ export const APP_MODULES = [
   { id: 'overview', name: 'Dashboard', path: '/dashboard' },
   { id: 'categories', name: 'Categories', path: '/dashboard/categories' },
   { id: 'menu-items', name: 'Menu Items', path: '/dashboard/menu-items' },
-  { id: 'orders', name: 'Orders', path: '/dashboard/orders' },
+  { id: 'orders', name: 'POS Terminal', path: '/dashboard/orders' },
+  { id: 'order-history', name: 'Order History', path: '/dashboard/order-history' },
   { id: 'tables', name: 'Tables', path: '/dashboard/tables' },
   { id: 'staff', name: 'Staff Management', path: '/dashboard/staff', adminOnly: true },
   { id: 'kds', name: 'Kitchen Display', path: '/kds' },
@@ -23,8 +24,8 @@ export const APP_MODULES = [
 
 export const DEFAULT_ROLE_PERMISSIONS = {
   // cashier: gets 'customers' access — needed for phone lookup during order creation
-  cashier: ['orders', 'tables', 'customers'],
-  waiter: ['orders', 'tables', 'kds', 'waiter-screen'],
+  cashier: ['orders', 'order-history', 'tables', 'customers'],
+  waiter: ['orders', 'order-history', 'tables', 'kds', 'waiter-screen'],
   kitchen: ['kds'],
   // manager: broad access — all operational modules; create/delete staff restricted at API level
   manager: APP_MODULES.filter((m) => m.id !== 'staff').map((m) => m.id),

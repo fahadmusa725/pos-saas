@@ -5,6 +5,7 @@ import Overview from './pages/Overview';
 import Categories from './pages/Categories';
 import MenuItems from './pages/MenuItems';
 import Orders from './pages/Orders';
+import OrderHistory from './pages/OrderHistory';
 import Tables from './pages/Tables';
 import Staff from './pages/Staff';
 import KitchenDisplay from './pages/KitchenDisplay';
@@ -68,6 +69,7 @@ function App() {
           <Route path="categories" element={<ProtectedRoute permissionId="categories"><Categories /></ProtectedRoute>} />
           <Route path="menu-items" element={<ProtectedRoute permissionId="menu-items"><MenuItems /></ProtectedRoute>} />
           <Route path="orders" element={<ProtectedRoute permissionId="orders"><Orders /></ProtectedRoute>} />
+          <Route path="order-history" element={<ProtectedRoute permissionId="order-history"><OrderHistory /></ProtectedRoute>} />
           <Route path="tables" element={<ProtectedRoute permissionId="tables"><Tables /></ProtectedRoute>} />
           <Route path="staff" element={<ProtectedRoute permissionId="staff"><Staff /></ProtectedRoute>} />
           <Route path="waiter-screen" element={<ProtectedRoute permissionId="waiter-screen"><WaiterScreen /></ProtectedRoute>} />

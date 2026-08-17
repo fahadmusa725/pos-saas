@@ -163,9 +163,13 @@ function Tables() {
     }
   };
 
+  const sortedTables = [...tables].sort((a, b) =>
+    a.tableNumber.localeCompare(b.tableNumber, undefined, { numeric: true, sensitivity: 'base' })
+  );
+
   const filteredTables = activeSection === 'All'
-    ? tables
-    : tables.filter((t) => (t.section || 'Indoor') === activeSection);
+    ? sortedTables
+    : sortedTables.filter((t) => (t.section || 'Indoor') === activeSection);
 
   const stats = {
     total: tables.length,
@@ -275,21 +279,21 @@ function Tables() {
                     : 'border-neutral-200 dark:border-neutral-800 hover:border-amber-500/40'
                 }`}
               >
-                {/* Action Buttons (top-right) */}
-                <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Action Buttons (top-right) - always visible */}
+                <div className="absolute top-2.5 right-2.5 flex items-center gap-1">
                   <button
                     onClick={() => startEdit(table)}
-                    className="p-1.5 text-blue-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
+                    className="p-2 text-blue-400 hover:text-blue-500 hover:bg-blue-500/15 rounded-lg transition-colors"
                     title="Edit Table"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => confirmDelete(table._id)}
-                    className="p-1.5 text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                    className="p-2 text-neutral-400 hover:text-rose-500 hover:bg-rose-500/15 rounded-lg transition-colors"
                     title="Delete Table"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 

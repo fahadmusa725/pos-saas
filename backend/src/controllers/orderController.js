@@ -129,7 +129,10 @@ exports.createOrder = async (req, res) => {
       };
     });
 
-    const taxAmount = Number(tax) || 0;
+    const Restaurant = require('../models/Restaurant');
+    const restaurant = await Restaurant.findById(req.tenantId);
+    const restaurantTaxRate = Number(restaurant?.taxRate) || 0;
+    const taxAmount = Math.round(subtotal * (restaurantTaxRate / 100));
     let finalCouponDiscount = Number(discount) || 0;
 
     // Server-side Coupon Re-validation Guard
@@ -267,7 +270,7 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-// @desc Get all orders (with optional status filter)
+// @desc Get all orders (with optional status, date, limit filters)
 // @route GET /api/orders
 exports.getOrders = async (req, res) => {
   try {
@@ -275,11 +278,42 @@ exports.getOrders = async (req, res) => {
     if (req.query.status) {
       filter.status = req.query.status;
     }
+    if (req.query.tableId) {
+      filter.tableId = req.query.tableId;
+    }
+    if (req.query.paymentStatus) {
+      filter.paymentStatus = req.query.paymentStatus;
+    }
 
-    const orders = await Order.find(filter)
+    // Date filtering: date=today OR startDate/endDate
+    if (req.query.date === 'today') {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+      filter.createdAt = { $gte: startOfDay, $lte: endOfDay };
+    } else if (req.query.startDate || req.query.endDate) {
+      filter.createdAt = {};
+      if (req.query.startDate) {
+        filter.createdAt.$gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate) {
+        const end = new Date(req.query.endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
+    let query = Order.find(filter)
       .populate('tableId', 'tableNumber')
       .populate('customerId', 'name phone')
       .sort('-createdAt');
+
+    if (req.query.limit && !isNaN(Number(req.query.limit))) {
+      query = query.limit(Number(req.query.limit));
+    }
+
+    const orders = await query;
 
     res.status(200).json({ success: true, count: orders.length, data: orders });
   } catch (error) {
@@ -317,11 +351,19 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Cancellation Guard: Cannot cancel a completed/served order
-    if (status === 'cancelled' && order.status === 'completed') {
+    // Final Status Guard: Cannot change status of an already completed or cancelled order
+    if (['completed', 'cancelled'].includes(order.status)) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot cancel a completed or fully served order',
+        message: `Order is already ${order.status} and cannot be modified.`,
+      });
+    }
+
+    // Cancellation Guard: Cannot cancel a ready or completed order
+    if (status === 'cancelled' && ['ready', 'completed'].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel an order that is already Ready or Completed',
       });
     }
 
@@ -588,8 +630,13 @@ exports.addItemsToOrder = async (req, res) => {
 
     order.items.push(...newProcessedItems);
 
+    const Restaurant = require('../models/Restaurant');
+    const restaurant = await Restaurant.findById(req.tenantId);
+    const restaurantTaxRate = Number(restaurant?.taxRate) || 0;
+
     order.subtotal = (order.subtotal || 0) + addedSubtotal;
-    const rawTotal = order.subtotal + (order.tax || 0) - (order.discount || 0);
+    order.tax = Math.round(order.subtotal * (restaurantTaxRate / 100));
+    const rawTotal = order.subtotal + order.tax - (order.discount || 0);
     order.total = Math.max(0, rawTotal);
 
     if (order.status === 'ready' || order.status === 'preparing') {

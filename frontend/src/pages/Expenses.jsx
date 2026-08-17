@@ -35,6 +35,7 @@ function Expenses() {
 
   const [startDate, setStartDate]       = useState(firstDayStr);
   const [endDate, setEndDate]           = useState(todayStr);
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
   // Modal & Delete
   const [showModal, setShowModal]       = useState(false);
@@ -47,6 +48,9 @@ function Expenses() {
       const params = new URLSearchParams();
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
+      if (selectedCategory && selectedCategory !== 'All') {
+        params.append('category', selectedCategory);
+      }
 
       const [expRes, sumRes] = await Promise.allSettled([
         api.get(`/expenses?${params.toString()}`),
@@ -60,7 +64,7 @@ function Expenses() {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, selectedCategory]);
 
   useEffect(() => {
     fetchData();
@@ -141,11 +145,29 @@ function Expenses() {
         </button>
       </div>
 
-      {/* Date Filter & Summary Banner */}
+      {/* Date & Category Filter & Summary Banner */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
         <div className="flex justify-between items-center flex-wrap gap-4">
           <div className="flex items-center gap-3 flex-wrap">
             <Filter className="w-4 h-4 text-amber-500" />
+
+            {/* Category Dropdown Filter */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold uppercase text-neutral-500">Category:</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-3 py-1.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs text-neutral-900 dark:text-neutral-100 capitalize font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              >
+                <option value="All">All Categories</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold uppercase text-neutral-500">From:</label>
               <input
@@ -164,27 +186,54 @@ function Expenses() {
                 className="px-3 py-1.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs text-neutral-900 dark:text-neutral-100"
               />
             </div>
+
+            {selectedCategory !== 'All' && (
+              <button
+                onClick={() => setSelectedCategory('All')}
+                className="px-2.5 py-1 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 text-xs font-bold rounded-lg border border-amber-500/20 transition"
+              >
+                Reset Category
+              </button>
+            )}
           </div>
 
           <div className="text-right">
-            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 block">Total Range Expense</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 block">Total Expense</span>
             <span className="text-2xl font-extrabold text-amber-500">Rs. {summary.totalExpense || 0}</span>
           </div>
         </div>
 
-        {/* Category Breakdown Badges */}
-        {summary.byCategory && summary.byCategory.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
-            {summary.byCategory.map((cat) => (
-              <span
-                key={cat._id}
-                className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${CATEGORY_COLORS[cat._id] || CATEGORY_COLORS.other}`}
+        {/* Category Breakdown Badges (Clickable filters) */}
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 items-center">
+          <span className="text-xs text-neutral-400 font-semibold mr-1">Quick Category Filter:</span>
+          <button
+            onClick={() => setSelectedCategory('All')}
+            className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider transition ${
+              selectedCategory === 'All'
+                ? 'bg-amber-500 text-neutral-950 border-amber-500 shadow-xs'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700'
+            }`}
+          >
+            All
+          </button>
+          {CATEGORIES.map((catKey) => {
+            const catData = summary.byCategory?.find((c) => c._id === catKey);
+            const isSelected = selectedCategory === catKey;
+            return (
+              <button
+                key={catKey}
+                onClick={() => setSelectedCategory(isSelected ? 'All' : catKey)}
+                className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider transition active:scale-95 ${
+                  isSelected
+                    ? 'bg-amber-500 text-neutral-950 border-amber-500 shadow-xs'
+                    : CATEGORY_COLORS[catKey] || CATEGORY_COLORS.other
+                }`}
               >
-                {cat._id}: Rs. {cat.total}
-              </span>
-            ))}
-          </div>
-        )}
+                {catKey}{catData ? `: Rs. ${catData.totalAmount || catData.total || 0}` : ''}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Expenses Table */}

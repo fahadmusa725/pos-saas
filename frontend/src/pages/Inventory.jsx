@@ -1,10 +1,25 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import ConfirmModal from '../components/ConfirmModal';
 import { Package, Plus, AlertTriangle, Edit2, Trash2, Search, DollarSign, ChevronDown, Tag } from 'lucide-react';
 
 const UNITS = ['kg', 'litre', 'piece', 'dozen', 'box', 'pack', 'other'];
+
+const INGREDIENT_CATEGORIES = [
+  'Dairy',
+  'Vegetables',
+  'Meat & Poultry',
+  'Seafood',
+  'Grains & Rice',
+  'Spices & Seasonings',
+  'Beverages',
+  'Oils & Condiments',
+  'Bakery',
+  'Frozen',
+  'Other',
+];
 
 // Color palette for category badges (cycles through)
 const BADGE_COLORS = [
@@ -20,7 +35,7 @@ const BADGE_COLORS = [
 
 const EMPTY_FORM = {
   name: '',
-  category: '',
+  category: 'Other',
   unit: 'kg',
   currentStock: 0,
   reorderLevel: 0,
@@ -28,6 +43,7 @@ const EMPTY_FORM = {
 };
 
 function Inventory() {
+  const location = useLocation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -37,16 +53,8 @@ function Inventory() {
   const [deleteId, setDeleteId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [categories, setCategories] = useState([]);
-
-  const fetchCategories = useCallback(async () => {
-    try {
-      const res = await api.get('/categories');
-      setCategories(res.data.data || []);
-    } catch (err) {
-      // silently fail
-    }
-  }, []);
+  const [highlightId, setHighlightId] = useState(null);
+  const highlightRowRef = useRef(null);
 
   const fetchItems = useCallback(async () => {
     try {
@@ -61,8 +69,28 @@ function Inventory() {
 
   useEffect(() => {
     fetchItems();
-    fetchCategories();
-  }, [fetchItems, fetchCategories]);
+  }, [fetchItems]);
+
+  // Detect ?highlight=itemId from URL (e.g., clicked from notification bell)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const id = params.get('highlight');
+    if (id) {
+      setHighlightId(id);
+      // Clear highlight after 4 seconds
+      const t = setTimeout(() => setHighlightId(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [location.search]);
+
+  // Auto-scroll to highlighted row once items load
+  useEffect(() => {
+    if (highlightId && highlightRowRef.current && !loading) {
+      setTimeout(() => {
+        highlightRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
+  }, [highlightId, loading]);
 
   // Stats
   const totalItems = items.length;
@@ -210,8 +238,8 @@ function Inventory() {
             className="appearance-none pl-10 pr-9 py-2.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none transition cursor-pointer min-w-[170px]"
           >
             <option value="All">All Categories</option>
-            {categories.map(c => (
-              <option key={c._id} value={c.name}>{c.name}</option>
+            {INGREDIENT_CATEGORIES.map(c => (
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
@@ -270,22 +298,32 @@ function Inventory() {
                 {filteredItems.map((item) => {
                   const isOut = item.currentStock <= 0;
                   const isLow = !isOut && item.currentStock <= item.reorderLevel;
+                  const isHighlighted = highlightId === item._id;
                   return (
                     <tr
                       key={item._id}
-                      className={`hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors ${isOut ? 'bg-rose-500/5' : isLow ? 'bg-amber-500/5' : ''
-                        }`}
+                      ref={isHighlighted ? highlightRowRef : null}
+                      className={`hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors ${
+                        isHighlighted
+                          ? 'ring-2 ring-amber-500 bg-amber-500/10 dark:bg-amber-500/10'
+                          : isOut ? 'bg-rose-500/5' : isLow ? 'bg-amber-500/5' : ''
+                      }`}
                     >
                       <td className="px-6 py-4 font-bold text-neutral-900 dark:text-white">
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4 text-amber-500 flex-shrink-0" />
                           {item.name}
+                          {isHighlighted && (
+                            <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500 text-neutral-950 animate-pulse">
+                              ALERT FOCUS
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         {(() => {
-                          const cat = item.category || '—';
-                          const idx = categories.findIndex(c => c.name === cat);
+                          const cat = item.category || 'Other';
+                          const idx = INGREDIENT_CATEGORIES.indexOf(cat);
                           const color = BADGE_COLORS[(idx >= 0 ? idx : 0) % BADGE_COLORS.length];
                           return (
                             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${color.bg} ${color.text} ${color.border}`}>
@@ -365,9 +403,8 @@ function Inventory() {
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
                     className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   >
-                    <option value="">— Select Category —</option>
-                    {categories.map((c) => (
-                      <option key={c._id} value={c.name}>{c.name}</option>
+                    {INGREDIENT_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
                 </div>

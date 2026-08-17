@@ -5,12 +5,29 @@ const Restaurant = require('../models/Restaurant');
 // @access Private (Admin & Staff)
 exports.getSettings = async (req, res) => {
   try {
-    const restaurant = await Restaurant.findById(req.tenantId).select(
-      'name phone address logo taxRate receiptFooterMessage currency showBarcodeOnReceipt enableSoundAlerts urgentOrderMinutes'
-    );
+    let restaurant = null;
+    if (req.tenantId) {
+      restaurant = await Restaurant.findById(req.tenantId);
+    }
+    if (!restaurant) {
+      restaurant = await Restaurant.findOne();
+    }
 
     if (!restaurant) {
-      return res.status(404).json({ success: false, message: 'Restaurant settings not found' });
+      return res.status(200).json({
+        success: true,
+        data: {
+          name: '',
+          phone: '',
+          address: '',
+          taxRate: 0,
+          receiptFooterMessage: 'Thank you for dining with us! Visit again soon.',
+          currency: 'Rs.',
+          showBarcodeOnReceipt: true,
+          enableSoundAlerts: true,
+          urgentOrderMinutes: 15,
+        },
+      });
     }
 
     res.status(200).json({
@@ -49,18 +66,24 @@ exports.updateSettings = async (req, res) => {
       urgentOrderMinutes,
     } = req.body;
 
-    const restaurant = await Restaurant.findById(req.tenantId);
+    let restaurant = null;
+    if (req.tenantId) {
+      restaurant = await Restaurant.findById(req.tenantId);
+    }
+    if (!restaurant) {
+      restaurant = await Restaurant.findOne();
+    }
 
     if (!restaurant) {
       return res.status(404).json({ success: false, message: 'Restaurant not found' });
     }
 
-    if (name !== undefined) restaurant.name = name.trim();
-    if (phone !== undefined) restaurant.phone = phone.trim();
-    if (address !== undefined) restaurant.address = address.trim();
+    if (name !== undefined && String(name).trim().length > 0) restaurant.name = String(name).trim();
+    if (phone !== undefined) restaurant.phone = String(phone).trim();
+    if (address !== undefined) restaurant.address = String(address).trim();
     if (taxRate !== undefined) restaurant.taxRate = Math.max(0, Math.min(100, Number(taxRate) || 0));
-    if (receiptFooterMessage !== undefined) restaurant.receiptFooterMessage = receiptFooterMessage.trim();
-    if (currency !== undefined) restaurant.currency = currency.trim() || 'Rs.';
+    if (receiptFooterMessage !== undefined) restaurant.receiptFooterMessage = String(receiptFooterMessage).trim();
+    if (currency !== undefined) restaurant.currency = String(currency).trim() || 'Rs.';
     if (showBarcodeOnReceipt !== undefined) restaurant.showBarcodeOnReceipt = Boolean(showBarcodeOnReceipt);
     if (enableSoundAlerts !== undefined) restaurant.enableSoundAlerts = Boolean(enableSoundAlerts);
     if (urgentOrderMinutes !== undefined) restaurant.urgentOrderMinutes = Math.max(1, Number(urgentOrderMinutes) || 15);
