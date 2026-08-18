@@ -382,12 +382,22 @@ function Orders() {
         toast.success('Order sent to kitchen!');
       }
 
-      // Mark items as SENT in cart instead of clearing cart!
-      setCart((prev) => prev.map((item) => ({ ...item, isSentToKitchen: true })));
-      setCurrentCreatedOrder(createdOrUpdated);
+      if (orderType === 'dine-in') {
+        // Mark items as SENT in cart instead of clearing cart!
+        setCart((prev) => prev.map((item) => ({ ...item, isSentToKitchen: true })));
+        setCurrentCreatedOrder(createdOrUpdated);
+        toast.success('Order sent to kitchen!');
+      } else {
+        // Takeaway / Delivery: Auto-open CheckoutModal immediately, clear cart & customer
+        setCheckoutOrder(createdOrUpdated);
+        setCart([]);
+        setCurrentCreatedOrder(null);
+        clearCustomer();
+        toast.success('Order created! Opening Checkout...');
+      }
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send order to kitchen');
+      toast.error(err.response?.data?.message || 'Failed to place order');
     } finally { setSubmitting(false); }
   };
 
@@ -401,12 +411,13 @@ function Orders() {
   };
 
   // ── 3. Handle Final Payment Completion (CART TABHI CLEAR HOGA) ───────────
-  const handlePaymentSubmit = async ({ payments, changeAmount, couponCode }) => {
+  const handlePaymentSubmit = async ({ payments, changeAmount, couponCode, customerId }) => {
     try {
       const res = await api.put(`/orders/${checkoutOrder._id}/pay`, {
         payments,
         changeAmount,
         couponCode,
+        customerId,
       });
       const updatedOrder = res.data.data;
       setCheckoutOrder(null);
@@ -895,7 +906,15 @@ function Orders() {
                 className="w-full py-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-neutral-950 font-extrabold rounded-xl transition-all disabled:opacity-50 text-sm shadow-xs flex items-center justify-center gap-2"
               >
                 <UtensilsCrossed className="w-4 h-4" />
-                <span>{submitting ? 'Sending to Kitchen...' : 'Place Order to Kitchen →'}</span>
+                <span>
+                  {submitting
+                    ? orderType === 'dine-in'
+                      ? 'Sending to Kitchen...'
+                      : 'Creating & Opening Checkout...'
+                    : orderType === 'dine-in'
+                    ? 'Place Order to Kitchen →'
+                    : 'Place Order & Checkout →'}
+                </span>
               </button>
             ) : activeTabOrder && isServedOrCompleted ? (
               // CASE 2: Order is SERVED / COMPLETED -> Checkout Button turns ENABLED!
