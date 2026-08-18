@@ -23,21 +23,30 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Customer selection state inside modal if order has no customer
-  const [modalCustomerId, setModalCustomerId] = useState(order.customerId?._id || order.customerId || '');
+  // Customer selection state inside modal
+  const initialCustomerObj = typeof order.customerId === 'object' ? order.customerId : null;
+  const initialCustId = initialCustomerObj?._id || (typeof order.customerId === 'string' ? order.customerId : '');
+
+  const [modalCustomerId, setModalCustomerId] = useState(initialCustId);
+  const [selectedCustomerObj, setSelectedCustomerObj] = useState(initialCustomerObj);
   const [customers, setCustomers] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
 
   useEffect(() => {
-    if (isCreditAllowed && !modalCustomerId) {
-      setLoadingCustomers(true);
-      api
-        .get('/customers')
-        .then((res) => setCustomers(res.data.data || []))
-        .catch(() => setCustomers([]))
-        .finally(() => setLoadingCustomers(false));
-    }
-  }, [isCreditAllowed, modalCustomerId]);
+    setLoadingCustomers(true);
+    api
+      .get('/customers')
+      .then((res) => {
+        const list = res.data.data || [];
+        setCustomers(list);
+        if (initialCustId && !initialCustomerObj) {
+          const found = list.find((c) => c._id === initialCustId);
+          if (found) setSelectedCustomerObj(found);
+        }
+      })
+      .catch(() => setCustomers([]))
+      .finally(() => setLoadingCustomers(false));
+  }, []);
 
   const couponDiscount = appliedCoupon
     ? Math.min(appliedCoupon.discountAmount ?? 0, order.total)
@@ -104,7 +113,7 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
     e.preventDefault();
 
     const hasCredit = payments.some((p) => p.method === 'credit');
-    const effectiveCustomerId = order.customerId?._id || order.customerId || modalCustomerId;
+    const effectiveCustomerId = modalCustomerId || selectedCustomerObj?._id || initialCustId;
 
     if (hasCredit && !effectiveCustomerId) {
       toast.error('Credit / Udhar payment requires selecting a customer!');
@@ -132,7 +141,6 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
   };
 
   const hasCreditInPayments = payments.some((p) => p.method === 'credit');
-  const activeCustomerName = order.customerId?.name || customers.find((c) => c._id === modalCustomerId)?.name;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
@@ -152,37 +160,66 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
           </button>
         </div>
 
-        {/* Customer Info / Picker if Udhar is used */}
-        {hasCreditInPayments && (
-          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2 text-xs">
-            <div className="flex items-center justify-between font-bold text-amber-500">
-              <span className="flex items-center gap-1.5">
-                <UserCheck className="w-4 h-4" />
-                Customer for Udhar Record:
-              </span>
-              {activeCustomerName && (
-                <span className="font-extrabold underline">{activeCustomerName}</span>
-              )}
-            </div>
-
-            {!(order.customerId?._id || order.customerId) && (
-              <div>
-                <select
-                  value={modalCustomerId}
-                  onChange={(e) => setModalCustomerId(e.target.value)}
-                  className="w-full px-3 py-2 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-neutral-100 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                >
-                  <option value="">-- Select Customer --</option>
-                  {customers.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name} ({c.phone})
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {/* Customer Selection (Optional for Cash/Card/Online, Required for Credit/Udhar) */}
+        <div
+          className={`p-3 rounded-xl border space-y-2 text-xs transition ${
+            hasCreditInPayments && !modalCustomerId
+              ? 'bg-rose-500/10 border-rose-500/30'
+              : 'bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800'
+          }`}
+        >
+          <div className="flex items-center justify-between font-bold">
+            <span className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-200">
+              <UserCheck className="w-4 h-4 text-amber-500" />
+              Customer (Optional):
+            </span>
+            {hasCreditInPayments && !modalCustomerId && (
+              <span className="text-rose-500 font-extrabold text-[11px]">* Required for Udhar</span>
             )}
           </div>
-        )}
+
+          {selectedCustomerObj || modalCustomerId ? (
+            <div className="flex items-center justify-between p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs">
+              <div className="font-semibold text-amber-500 flex items-center gap-1.5">
+                <span>👤</span>
+                <span>
+                  {selectedCustomerObj?.name || 'Linked Customer'}
+                  {selectedCustomerObj?.phone ? ` (${selectedCustomerObj.phone})` : ''}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setModalCustomerId('');
+                  setSelectedCustomerObj(null);
+                }}
+                className="text-neutral-400 hover:text-rose-500 font-bold text-[11px] underline"
+              >
+                Change / Remove
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <select
+                value={modalCustomerId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setModalCustomerId(val);
+                  const found = customers.find((c) => c._id === val);
+                  setSelectedCustomerObj(found || null);
+                }}
+                className="w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-neutral-100 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none text-xs"
+              >
+                <option value="">{loadingCustomers ? 'Loading customers...' : '-- Select Customer --'}</option>
+                {customers.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name} ({c.phone})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
 
         {/* Coupon Code Input */}
         <div className="p-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl space-y-2">

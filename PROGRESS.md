@@ -46,6 +46,7 @@
 | 17 | Overview / Dashboard Home | COMPLETED | Overview.jsx - Today Revenue and Orders, All-Time Revenue and Orders, Avg Order Value, Category/MenuItem/Table counts, Best Sellers with rank medals, Recent Orders feed. Promise.allSettled() parallel fetch. |
 | 18 | Multi-round KDS & Receipt Upgrade | COMPLETED | 14 Aug 2026: Order.js item round & addedAt schema. orderController.js addItemsToOrder auto round calculation + strict recipe stock check validation for round 2+. KitchenDisplay.jsx Option A single morphing button (Start Prep -> Mark Ready for Waiter) + round grouping. ReceiptModal.jsx multi-round thermal breakdown. Orders.jsx Re-print receipt button in Actions column. WaiterScreen.jsx round badge. |
 | 19 | System Settings Module | COMPLETED | 14 Aug 2026: Restaurant.js model updated (address, phone, taxRate, receiptFooterMessage, currency, showBarcodeOnReceipt, enableSoundAlerts, urgentOrderMinutes). settingsController.js (GET/PUT /api/settings). Settings.jsx created with GENERAL (Name, Address, Phone), BILLING (Tax Rate %, Currency), RECEIPTS (Footer Msg, Barcode toggle), KITCHEN PREFERENCES cards + top Save button. Sidebar registered below Coupons & Discounts (adminOnly). ReceiptModal live settings integration. |
+| 20 | 5 UX & Workflow Bug Fixes | COMPLETED | 18 Aug 2026: 1) Waiter Screen reload fix (fetchReadyOrders background refresh, button type="button"). 2) Order completion real-time sync (orderCompleted socket event removes completed/paid orders from Waiter Screen). 3) Takeaway/Delivery simplified flow (auto-opens CheckoutModal immediately, resets POS cart). 4) Recipe Builder unit dropdown (kg, g, litre, ml, piece, dozen, box, pack, other). 5) CheckoutModal customer selection (optional search & link, pre-fills existing customer, order of operations fix in markAsPaid). |
 
 ---
 
@@ -62,7 +63,7 @@
 
 ---
 
-## Current System Stats (as of 14 Aug 2026)
+## Current System Stats (as of 18 Aug 2026)
 
 | Layer | Count | Items |
 |-------|-------|-------|
@@ -72,7 +73,7 @@
 | Frontend Pages | 19 | Overview, Categories, MenuItems, Orders, Tables, Staff, KitchenDisplay, WaiterScreen, Customers, Suppliers, Inventory, PurchaseOrders, Expenses, Reports, Coupons, Settings, Login, SuperAdminOverview, RestaurantsList |
 | Frontend Components | 8 | DashboardLayout, SuperAdminLayout, ScreenNavPanel, ProtectedRoute, CheckoutModal, ReceiptModal, ConfirmModal, CustomerHistoryModal |
 | User Roles | 5 | super-admin, restaurant-admin, cashier, waiter, kitchen |
-| Socket.io Events | 3 | newOrder, orderStatusUpdated, orderItemStatusUpdated |
+| Socket.io Events | 4 | newOrder, orderStatusUpdated, orderItemStatusUpdated, orderCompleted |
 
 ---
 
@@ -94,6 +95,8 @@
 - [14 Aug 2026] BUG FIXES & UX UPGRADES: 1) Table Occupancy Guard: Fixed bug where waiter serving items freed table prematurely — table now STAYS `occupied` until order is PAID in `markAsPaid`. 2) Cart Running Tab UX: Removed `setTableId('')` reset on place order; added Active Tab Summary Panel in Cart column showing already ordered items (Round 1, Round 2) + new additions. 3) Thermal Receipt Redesign: Upgraded ReceiptModal to full 80mm thermal tax invoice layout (header, order details, double borders, itemized round breakdown, GST, subtotal, discount, grand total box, payment breakdown, change returned, barcode visual lines).
 - [14 Aug 2026] - Built System Settings Module: Settings.jsx created matching exact reference screenshots (General, Billing, Receipts, Kitchen Preferences). Sidebar placement right below Coupons & Discounts (adminOnly). GET/PUT /api/settings endpoints wired to Restaurant model. ReceiptModal live settings integration.
 - [17 Aug 2026] BUG FIXES & CLEANUPS: 1) Coupon Status Display: Updated Coupons.jsx to display "Expired" status badge when `c.isActive` is true but `expiryDate` has passed (preserving DB `isActive` state). 2) Recipe Ingredient Validation: Added mandatory quantity check on frontend (toast block) and backend HTTP 400 validation in `createMenuItem`/`updateMenuItem`. 3) MenuItems State Sync: Fixed immediate UI updates after create/update/delete by awaiting `fetchData()` and populating category & recipe references in backend controllers. 4) Veg/Non-Veg Cleanup: Removed Vegetarian checkbox from modal and Veg badge from table in MenuItems.jsx (keeping DB `isVeg` model schema intact).
+- [18 Aug 2026] - 5 BUGS & WORKFLOW FIXES: 1) Waiter Screen Mark Served UX Fix: Removed full page reload/spinner on item status update, added button type="button", smooth local state update. 2) Real-time Completed Order Sync: Backend emits orderCompleted socket event when order is paid/completed; Waiter Screen removes completed orders in real-time. 3) Takeaway/Delivery Simplified Flow: Eliminated running tab for takeaway/delivery, auto-opens CheckoutModal immediately after place order, resets cart on payment. 4) Recipe Builder Unit Dropdown: Converted text input to enum dropdown (kg, g, litre, ml, piece, dozen, box, pack, other) in MenuItems.jsx. 5) CheckoutModal Customer Selection: Added customer search/picker in payment modal for all payment types, pre-fills linked customer, ensured order of operations in markAsPaid saves customerId FIRST before credit balance increment.
+- [18 Aug 2026] - HISTORY & RECEIPT MODAL FIXES: 1) Kitchen & Waiter History Sync: Updated History item extraction logic in KitchenDisplay.jsx & WaiterScreen.jsx to include items from completed/paid orders (e.g. fast Takeaway/Delivery orders), ensuring complete history recording regardless of item-level status. 2) ReceiptModal Sticky Layout: Restructured ReceiptModal.jsx into sticky header + scrollable items list (max-h-[35vh]) + sticky footer & bottom buttons (Print Thermal Receipt & Close permanently visible without scrolling), with `@media print` style overrides for thermal printing.
 
 
 

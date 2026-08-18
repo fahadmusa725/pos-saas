@@ -664,7 +664,17 @@ function MenuItems() {
                             {inventoryItems.map((inv) => <option key={inv._id} value={inv._id}>{inv.name} ({inv.unit || 'units'})</option>)}
                           </select>
                           <input type="number" step="any" min="0" value={ing.quantityUsed} onChange={(e) => handleIngredientChange(idx, 'quantityUsed', e.target.value)} placeholder="Qty used" className="w-24 px-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-neutral-100 focus:ring-2 focus:ring-amber-500" />
-                          <input type="text" value={ing.unit} onChange={(e) => handleIngredientChange(idx, 'unit', e.target.value)} placeholder="Unit" className="w-20 px-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-neutral-100 focus:ring-2 focus:ring-amber-500" />
+                          <select
+                            value={ing.unit || 'kg'}
+                            onChange={(e) => handleIngredientChange(idx, 'unit', e.target.value)}
+                            className="w-24 px-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-neutral-100 focus:ring-2 focus:ring-amber-500"
+                          >
+                            {['kg', 'g', 'litre', 'ml', 'piece', 'dozen', 'box', 'pack', 'other'].map((u) => (
+                              <option key={u} value={u}>
+                                {u}
+                              </option>
+                            ))}
+                          </select>
                           <button type="button" onClick={() => handleRemoveIngredient(idx)} className="p-1.5 text-neutral-400 hover:text-rose-500 transition rounded-lg"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       ))}

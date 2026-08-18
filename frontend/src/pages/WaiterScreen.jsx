@@ -74,9 +74,9 @@ function WaiterScreen() {
     }
   };
 
-  const fetchReadyOrders = async () => {
+  const fetchReadyOrders = async (showLoading = false) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       setError('');
       const res = await api.get('/orders');
       if (res.data.success) {
@@ -86,7 +86,7 @@ function WaiterScreen() {
       console.error('Failed to fetch orders:', err);
       setError('Failed to load active orders');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -105,7 +105,7 @@ function WaiterScreen() {
   };
 
   useEffect(() => {
-    fetchReadyOrders();
+    fetchReadyOrders(true);
 
     // Socket.io real-time connection
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -119,7 +119,7 @@ function WaiterScreen() {
     });
 
     socket.on('newOrder', () => {
-      fetchReadyOrders();
+      fetchReadyOrders(false);
     });
 
     socket.on('orderItemStatusUpdated', ({ status }) => {
@@ -127,12 +127,24 @@ function WaiterScreen() {
         playReadySound();
         toast.success('🔔 Order item is READY to serve!', { duration: 4000 });
       }
-      fetchReadyOrders();
+      fetchReadyOrders(false);
       if (activeTab === 'history') fetchServedHistory();
     });
 
-    socket.on('orderStatusUpdated', () => {
-      fetchReadyOrders();
+    socket.on('orderStatusUpdated', (updatedOrder) => {
+      if (updatedOrder && (updatedOrder.status === 'completed' || updatedOrder.status === 'cancelled' || updatedOrder.paymentStatus === 'paid')) {
+        setOrders((prev) => prev.filter((o) => o._id !== updatedOrder._id));
+      } else {
+        fetchReadyOrders(false);
+      }
+      if (activeTab === 'history') fetchServedHistory();
+    });
+
+    socket.on('orderCompleted', (completedOrder) => {
+      const orderId = completedOrder?._id || completedOrder;
+      if (orderId) {
+        setOrders((prev) => prev.filter((o) => o._id !== orderId));
+      }
       if (activeTab === 'history') fetchServedHistory();
     });
 
@@ -141,7 +153,7 @@ function WaiterScreen() {
         socketRef.current.disconnect();
       }
     };
-  }, [user]);
+  }, [user, activeTab]);
 
   // Fetch notifications (low-stock + recent orders)
   const fetchNotifications = async () => {
@@ -252,21 +264,26 @@ function WaiterScreen() {
     }
   };
 
-  // Filter orders that have items ready to be served
-  const readyOrders = orders.filter((order) =>
-    (order.items || []).some((item) => item.status === 'ready')
+  // Filter orders that have items ready to be served (and ignore completed/paid/cancelled orders)
+  const readyOrders = orders.filter(
+    (order) =>
+      order.status !== 'completed' &&
+      order.status !== 'cancelled' &&
+      order.paymentStatus !== 'paid' &&
+      (order.items || []).some((item) => item.status === 'ready')
   );
 
   // Extract served items for history tab
   const servedItemsList = [];
   historyOrders.forEach((order) => {
+    if (order.status === 'cancelled') return;
     const tableNum =
       order.tableId?.tableNumber ??
       order.tableNumber ??
-      (order.orderType === 'dine-in' ? 'T-?' : 'Takeaway');
+      (order.orderType === 'dine-in' ? 'T-?' : order.orderType === 'takeaway' ? 'Takeaway' : 'Delivery');
 
     (order.items || []).forEach((item) => {
-      if (item.status === 'served') {
+      if (item.status === 'served' || order.status === 'completed') {
         servedItemsList.push({
           ...item,
           orderId: order._id,
@@ -530,6 +547,7 @@ function WaiterScreen() {
                         </div>
 
                         <button
+                          type="button"
                           onClick={() => handleMarkAsServed(order._id, item._id)}
                           disabled={updatingItemId === item._id}
                           className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-neutral-950 font-extrabold text-xs transition shadow-xs flex items-center gap-1.5 shrink-0 disabled:opacity-50"

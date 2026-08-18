@@ -109,6 +109,12 @@ function KitchenDisplay() {
   };
 
   useEffect(() => {
+    if (activeTab === 'history') {
+      fetchOrderHistory(historyLimit);
+    }
+  }, [activeTab, historyLimit]);
+
+  useEffect(() => {
     fetchActiveOrders();
 
     // Socket.io connection setup
@@ -155,10 +161,15 @@ function KitchenDisplay() {
       if (activeTab === 'history') fetchOrderHistory();
     });
 
+    socket.on('orderCompleted', () => {
+      fetchActiveOrders();
+      if (activeTab === 'history') fetchOrderHistory();
+    });
+
     return () => {
       socket.disconnect();
     };
-  }, [user]);
+  }, [user, activeTab]);
 
   // Fetch notifications (low-stock + recent orders)
   const fetchNotifications = async () => {
@@ -279,13 +290,14 @@ function KitchenDisplay() {
   // Extract completed/ready items for history tab
   const historyItemsList = [];
   historyOrders.forEach((order) => {
+    if (order.status === 'cancelled') return;
     const tableNum =
       order.tableId?.tableNumber ??
       order.tableNumber ??
-      (order.orderType === 'dine-in' ? 'T-?' : 'Takeaway');
+      (order.orderType === 'dine-in' ? 'T-?' : order.orderType === 'takeaway' ? 'Takeaway' : 'Delivery');
 
     (order.items || []).forEach((item) => {
-      if (item.status === 'ready' || item.status === 'served') {
+      if (item.status === 'ready' || item.status === 'served' || order.status === 'completed') {
         historyItemsList.push({
           ...item,
           orderId: order._id,

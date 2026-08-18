@@ -375,6 +375,9 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
+    if (['completed', 'cancelled'].includes(status)) {
+      req.io.to(req.tenantId.toString()).emit('orderCompleted', order);
+    }
 
     res.status(200).json({ success: true, data: order });
   } catch (error) {
@@ -448,6 +451,11 @@ exports.markAsPaid = async (req, res) => {
       order.total = Math.max(0, order.subtotal + order.tax - verifiedDiscount);
     }
 
+    // Save customerId FIRST if passed in request body (for any payment method including credit, cash, card, online)
+    if (req.body.customerId) {
+      order.customerId = req.body.customerId;
+    }
+
     // Default fallback if single payment payload is sent
     let newPayments = payments;
     if (!newPayments || !Array.isArray(newPayments) || newPayments.length === 0) {
@@ -467,9 +475,6 @@ exports.markAsPaid = async (req, res) => {
           success: false,
           message: 'A customer must be selected to record a Credit / Udhar order.',
         });
-      }
-      if (req.body.customerId && !order.customerId) {
-        order.customerId = req.body.customerId;
       }
     }
 
@@ -559,6 +564,9 @@ exports.markAsPaid = async (req, res) => {
 
     // Real-time socket updates for KDS & Waiter views
     req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
+    if (order.paymentStatus === 'paid' || order.status === 'completed') {
+      req.io.to(req.tenantId.toString()).emit('orderCompleted', order);
+    }
 
     res.status(200).json({
       success: true,
