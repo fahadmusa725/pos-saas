@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../services/api';
-import { APP_MODULES } from '../config/modules';
+import { APP_MODULES, PLAN_MODULES } from '../config/modules';
 import { useTheme } from '../context/ThemeContext';
 import {
   LayoutDashboard,
@@ -58,6 +58,7 @@ function DashboardLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [restaurantName, setRestaurantName] = useState('');
+  const [restaurantPlan, setRestaurantPlan] = useState('basic');
 
   // Notification state
   const [notifOpen, setNotifOpen] = useState(false);
@@ -76,13 +77,14 @@ function DashboardLayout() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch live restaurant name from backend on mount (avoids stale cached data)
+  // Fetch live restaurant info from backend on mount
   useEffect(() => {
     if (user) {
       api.get('/auth/me/restaurant')
         .then((res) => {
-          if (res.data?.data?.name) {
-            setRestaurantName(res.data.data.name);
+          if (res.data?.data) {
+            if (res.data.data.name) setRestaurantName(res.data.data.name);
+            if (res.data.data.subscriptionPlan) setRestaurantPlan(res.data.data.subscriptionPlan);
           }
         })
         .catch(() => {});
@@ -193,7 +195,17 @@ function DashboardLayout() {
   };
 
   const isAllowed = (module) => {
-    if (user?.role === 'super-admin' || user?.role === 'restaurant-admin') return true;
+    if (user?.role === 'super-admin') return true;
+
+    // 1. Plan-level check: Is this module included in the tenant's subscription plan?
+    const currentPlan = restaurantPlan || 'basic';
+    const planModules = PLAN_MODULES[currentPlan] || PLAN_MODULES['basic'];
+    if (!planModules.includes(module.id)) {
+      return false;
+    }
+
+    // 2. Role/Permission-level check
+    if (user?.role === 'restaurant-admin') return true;
     const userPermissions = user?.permissions || [];
     return userPermissions.includes(module.id);
   };

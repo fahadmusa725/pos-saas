@@ -31,3 +31,17 @@ export const DEFAULT_ROLE_PERMISSIONS = {
   manager: APP_MODULES.filter((m) => m.id !== 'staff').map((m) => m.id),
   'restaurant-admin': APP_MODULES.map((m) => m.id),
 };
+
+export const PLAN_MODULES = {
+  basic: [
+    'overview',
+    'categories',
+    'menu-items',
+    'orders',
+    'order-history',
+    'reports',
+    'coupons',
+    'settings',
+  ],
+  pro: APP_MODULES.map((m) => m.id),
+};

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { Building2, CheckCircle2, AlertTriangle, Clock, ShoppingBag, DollarSign, ArrowRight } from 'lucide-react';
+import { Building2, CheckCircle2, AlertTriangle, Clock, ArrowRight } from 'lucide-react';
 
 function SuperAdminOverview() {
   const [stats, setStats] = useState({
@@ -9,8 +9,6 @@ function SuperAdminOverview() {
     activeCount: 0,
     suspendedCount: 0,
     trialCount: 0,
-    totalOrders: 0,
-    totalRevenue: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -110,33 +108,6 @@ function SuperAdminOverview() {
             );
           })
         )}
-      </div>
-
-      {/* Row 2: Platform Transaction Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs flex items-center gap-4">
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
-            <DollarSign className="w-7 h-7" />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-neutral-400">Total Platform Revenue</p>
-            <p className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white mt-0.5">
-              Rs. {stats.totalRevenue.toLocaleString()}
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs flex items-center gap-4">
-          <div className="p-3.5 rounded-2xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
-            <ShoppingBag className="w-7 h-7" />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-neutral-400">Total Orders Processed</p>
-            <p className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white mt-0.5">
-              {stats.totalOrders.toLocaleString()} orders
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

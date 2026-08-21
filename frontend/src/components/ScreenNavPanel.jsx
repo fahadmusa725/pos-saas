@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../services/api';
-import { APP_MODULES } from '../config/modules';
+import { APP_MODULES, PLAN_MODULES } from '../config/modules';
 import {
   Menu, X, LayoutDashboard, Grid, UtensilsCrossed,
   ShoppingBag, Armchair, Users, UserCheck, Truck, Package,
@@ -42,22 +42,34 @@ export default function ScreenNavPanel({ theme = 'dark' }) {
   // Sidebar panel state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Restaurant name (fetched live from API like DashboardLayout)
+  // Restaurant info (fetched live from API)
   const [restaurantName, setRestaurantName] = useState('');
+  const [restaurantPlan, setRestaurantPlan] = useState('basic');
 
-  // Fetch restaurant name on mount
+  // Fetch restaurant info on mount
   useEffect(() => {
     if (user?.restaurantId) {
       api.get('/auth/me/restaurant')
         .then((res) => {
-          if (res.data?.data?.name) setRestaurantName(res.data.data.name);
+          if (res.data?.data) {
+            if (res.data.data.name) setRestaurantName(res.data.data.name);
+            if (res.data.data.subscriptionPlan) setRestaurantPlan(res.data.data.subscriptionPlan);
+          }
         })
         .catch(() => {});
     }
   }, [user?.restaurantId]);
 
   const isAllowed = (module) => {
-    if (user?.role === 'super-admin' || user?.role === 'restaurant-admin') return true;
+    if (user?.role === 'super-admin') return true;
+
+    const currentPlan = restaurantPlan || 'basic';
+    const planModules = PLAN_MODULES[currentPlan] || PLAN_MODULES['basic'];
+    if (!planModules.includes(module.id)) {
+      return false;
+    }
+
+    if (user?.role === 'restaurant-admin') return true;
     const perms = user?.permissions || [];
     return perms.includes(module.id);
   };

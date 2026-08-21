@@ -33,8 +33,23 @@ const DEFAULT_ROLE_PERMISSIONS = {
 
 const VALID_MODULE_IDS = APP_MODULES.map((m) => m.id);
 
+const PLAN_MODULES = {
+  basic: [
+    'overview',
+    'categories',
+    'menu-items',
+    'orders',
+    'order-history',
+    'reports',
+    'coupons',
+    'settings',
+  ],
+  pro: APP_MODULES.map((m) => m.id),
+};
+
 module.exports = {
   APP_MODULES,
   DEFAULT_ROLE_PERMISSIONS,
   VALID_MODULE_IDS,
+  PLAN_MODULES,
 };
