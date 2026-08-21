@@ -51,20 +51,46 @@ exports.authorize = (...roles) => {
 };
 
 // Granular module permission check middleware
-// restaurant-admin & super-admin: always allowed
-// manager, cashier, waiter, kitchen: checked against their permissions[] array
+// 1. Checks tenant subscription plan (PLAN_MODULES) for all non-super-admin users
+// 2. Checks role (restaurant-admin always gets plan-allowed modules) or user permissions[] array
 exports.checkPermission = (moduleName) => {
-  return (req, res, next) => {
-    if (req.user.role === 'super-admin' || req.user.role === 'restaurant-admin') {
-      return next();
+  return async (req, res, next) => {
+    try {
+      if (req.user.role === 'super-admin') {
+        return next();
+      }
+
+      // Check tenant subscription plan restrictions
+      if (req.user.restaurantId) {
+        const Restaurant = require('../models/Restaurant');
+        const { PLAN_MODULES } = require('../config/modules');
+        const restaurant = await Restaurant.findById(req.user.restaurantId).select('subscriptionPlan');
+        if (restaurant) {
+          const plan = restaurant.subscriptionPlan || 'basic';
+          const allowedModules = PLAN_MODULES[plan] || PLAN_MODULES['basic'];
+          if (!allowedModules.includes(moduleName)) {
+            return res.status(403).json({
+              success: false,
+              message: `The '${moduleName}' module is not included in your restaurant's subscription plan (${plan})`,
+            });
+          }
+        }
+      }
+
+      if (req.user.role === 'restaurant-admin') {
+        return next();
+      }
+
+      const userPermissions = req.user.permissions || [];
+      if (!userPermissions.includes(moduleName)) {
+        return res.status(403).json({
+          success: false,
+          message: `You do not have permission to access the '${moduleName}' module`,
+        });
+      }
+      next();
+    } catch (err) {
+      next(err);
     }
-    const userPermissions = req.user.permissions || [];
-    if (!userPermissions.includes(moduleName)) {
-      return res.status(403).json({
-        success: false,
-        message: `You do not have permission to access the '${moduleName}' module`,
-      });
-    }
-    next();
   };
 };

@@ -63,8 +63,12 @@ const restaurantSchema = new mongoose.Schema(
     },
     subscriptionPlan: {
       type: String,
-      enum: ['basic', 'pro', 'enterprise'],
+      enum: ['basic', 'pro'],
       default: 'basic',
+    },
+    trialEndsAt: {
+      type: Date,
+      default: null,
     },
     isActive: {
       type: Boolean,

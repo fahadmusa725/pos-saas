@@ -87,15 +87,38 @@ exports.login = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Account is deactivated' });
     }
 
-    // Check restaurant suspension for non-super-admin users
+    // Check restaurant status (suspension & trial expiry) for non-super-admin users
     if (user.role !== 'super-admin' && user.restaurantId) {
       const Restaurant = require('../models/Restaurant');
       const restaurant = await Restaurant.findById(user.restaurantId);
-      if (restaurant && restaurant.isActive === false) {
+      if (!restaurant) {
+        return res.status(404).json({ success: false, message: 'Associated restaurant not found' });
+      }
+
+      console.log(
+        `[LOGIN CHECK] Restaurant: ${restaurant.name}, subscriptionStatus: ${restaurant.subscriptionStatus}, trialEndsAt: ${restaurant.trialEndsAt}, isActive: ${restaurant.isActive}`
+      );
+
+      if (restaurant.isActive === false || restaurant.subscriptionStatus === 'suspended') {
         return res.status(403).json({
           success: false,
           message: 'Your restaurant account has been suspended. Please contact support.',
         });
+      }
+
+      if (restaurant.subscriptionStatus === 'trial' && restaurant.trialEndsAt) {
+        const trialEndDate = new Date(restaurant.trialEndsAt);
+        const now = new Date();
+        console.log(
+          `[TRIAL CHECK] trialEndDate: ${trialEndDate.toISOString()}, now: ${now.toISOString()}, isExpired: ${trialEndDate < now}`
+        );
+
+        if (trialEndDate < now) {
+          return res.status(403).json({
+            success: false,
+            message: 'Your trial has ended. Please contact support to upgrade your subscription.',
+          });
+        }
       }
     }
 

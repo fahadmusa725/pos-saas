@@ -29,15 +29,6 @@ const getPlatformStats = async (req, res) => {
     const suspendedCount = await Restaurant.countDocuments({ isActive: false });
     const trialCount = await Restaurant.countDocuments({ subscriptionStatus: 'trial' });
 
-    const totalOrders = await Order.countDocuments();
-
-    // Total Platform Revenue aggregation
-    const revenueAgg = await Order.aggregate([
-      { $match: { paymentStatus: 'paid' } },
-      { $group: { _id: null, total: { $sum: '$total' } } },
-    ]);
-    const totalRevenue = revenueAgg[0]?.total || 0;
-
     res.status(200).json({
       success: true,
       data: {
@@ -45,8 +36,6 @@ const getPlatformStats = async (req, res) => {
         activeCount,
         suspendedCount,
         trialCount,
-        totalOrders,
-        totalRevenue,
       },
     });
   } catch (error) {
@@ -97,7 +86,17 @@ const getAllRestaurants = async (req, res) => {
 // @access  Private (super-admin)
 const createRestaurant = async (req, res) => {
   try {
-    const { name, phone, address, subscriptionPlan, adminName, adminEmail, adminPassword } = req.body;
+    const {
+      name,
+      phone,
+      address,
+      subscriptionPlan,
+      subscriptionStatus,
+      trialEndsAt,
+      adminName,
+      adminEmail,
+      adminPassword,
+    } = req.body;
 
     if (!name || !adminName || !adminEmail || !adminPassword) {
       return res.status(400).json({
@@ -123,15 +122,31 @@ const createRestaurant = async (req, res) => {
       slug = `${slug}-${Date.now().toString().slice(-4)}`;
     }
 
+    const status = subscriptionStatus || 'trial';
+    let finalTrialEndsAt = null;
+
+    if (status === 'trial') {
+      if (trialEndsAt) {
+        finalTrialEndsAt = new Date(trialEndsAt);
+      } else {
+        // Fallback default: 14 days from now
+        finalTrialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      }
+    } else if (trialEndsAt) {
+      finalTrialEndsAt = new Date(trialEndsAt);
+    }
+
     // 1. Create Restaurant document
     const restaurant = await Restaurant.create({
       name,
       slug,
+      email: cleanEmail,
       phone: phone || '',
       address: address || '',
-      subscriptionPlan: subscriptionPlan || 'trial',
-      subscriptionStatus: 'active',
-      isActive: true,
+      subscriptionPlan: subscriptionPlan || 'basic',
+      subscriptionStatus: status,
+      trialEndsAt: finalTrialEndsAt,
+      isActive: status !== 'suspended',
     });
 
     // 2. Create primary restaurant-admin user
@@ -166,7 +181,15 @@ const createRestaurant = async (req, res) => {
 // @access  Private (super-admin)
 const updateRestaurant = async (req, res) => {
   try {
-    const { name, phone, address, subscriptionPlan, subscriptionStatus, adminEmail } = req.body;
+    const {
+      name,
+      phone,
+      address,
+      subscriptionPlan,
+      subscriptionStatus,
+      trialEndsAt,
+      adminEmail,
+    } = req.body;
 
     const restaurant = await Restaurant.findById(req.params.id);
     if (!restaurant) {
@@ -177,7 +200,31 @@ const updateRestaurant = async (req, res) => {
     if (phone !== undefined) restaurant.phone = phone;
     if (address !== undefined) restaurant.address = address;
     if (subscriptionPlan) restaurant.subscriptionPlan = subscriptionPlan;
-    if (subscriptionStatus) restaurant.subscriptionStatus = subscriptionStatus;
+
+    if (subscriptionStatus) {
+      restaurant.subscriptionStatus = subscriptionStatus;
+      if (subscriptionStatus === 'suspended') {
+        restaurant.isActive = false;
+      } else {
+        restaurant.isActive = true;
+      }
+    }
+
+    if (subscriptionStatus === 'trial') {
+      if (trialEndsAt) {
+        let parsedDate = new Date(trialEndsAt);
+        if (typeof trialEndsAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(trialEndsAt.trim())) {
+          const [year, month, day] = trialEndsAt.trim().split('-').map(Number);
+          parsedDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+        }
+        restaurant.trialEndsAt = parsedDate;
+      } else if (!restaurant.trialEndsAt) {
+        // Fallback default 14 days if turning on trial with no date specified
+        restaurant.trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      }
+    } else if (trialEndsAt !== undefined) {
+      restaurant.trialEndsAt = trialEndsAt ? new Date(trialEndsAt) : null;
+    }
 
     await restaurant.save();
 
