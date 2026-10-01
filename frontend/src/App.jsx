@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Overview from './pages/Overview';
 import Categories from './pages/Categories';
@@ -37,6 +38,7 @@ function App() {
         }}
       />
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
 
         <Route

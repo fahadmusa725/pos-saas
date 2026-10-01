@@ -66,6 +66,7 @@ function DashboardLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeNotifTab, setActiveNotifTab] = useState('all');
   const notifRef = useRef(null);
+  const mobileNotifRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -148,7 +149,9 @@ function DashboardLayout() {
   // Close notification dropdown on outside click
   useEffect(() => {
     const handleClick = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
+      const insideDesktop = notifRef.current && notifRef.current.contains(e.target);
+      const insideMobile = mobileNotifRef.current && mobileNotifRef.current.contains(e.target);
+      if (!insideDesktop && !insideMobile) {
         setNotifOpen(false);
       }
     };
@@ -222,6 +225,111 @@ function DashboardLayout() {
     ? notifications
     : activeNotifTab === 'order' ? orderNotifs : stockNotifs;
 
+  const renderNotifDropdown = (positionClass) => (
+    <div className={`absolute ${positionClass} top-full mt-2 w-[calc(100vw-2rem)] max-w-80 sm:w-80 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-2xl z-50 overflow-hidden`}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Bell className="w-4 h-4 text-amber-500 shrink-0" />
+          <span className="text-xs font-extrabold text-neutral-900 dark:text-white uppercase tracking-wide truncate">Live Notifications</span>
+          {unreadCount > 0 && (
+            <span className="px-2 py-0.5 bg-amber-500 text-neutral-950 text-[10px] font-extrabold rounded-full shrink-0 whitespace-nowrap">
+              {unreadCount} new
+            </span>
+          )}
+        </div>
+        <button
+          onClick={markAllRead}
+          className="text-xs text-neutral-400 hover:text-amber-500 transition font-semibold shrink-0 whitespace-nowrap"
+        >
+          Mark all as read
+        </button>
+      </div>
+
+      {/* Category Tabs */}
+      <div className="flex items-center gap-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
+        {[
+          { label: `All (${notifications.length})`, key: 'all' },
+          { label: `Orders (${orderNotifs.length})`, key: 'order' },
+          { label: `Stock (${stockNotifs.length})`, key: 'stock' },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveNotifTab(tab.key)}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+              activeNotifTab === tab.key
+                ? 'bg-amber-500 text-neutral-950'
+                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Notification List */}
+      <div className="max-h-72 overflow-y-auto">
+        {visibleNotifs.length === 0 ? (
+          <div className="py-8 text-center text-neutral-500 text-sm">
+            <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500/50" />
+            All clear! No notifications.
+          </div>
+        ) : (
+          visibleNotifs.map((notif) => (
+            <div
+              key={notif.id}
+              className={`flex items-start gap-3 px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 last:border-0 transition group ${
+                !notif.read
+                  ? 'bg-amber-500/5 hover:bg-amber-500/10'
+                  : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
+              }`}
+            >
+              {/* Icon */}
+              <div className={`p-1.5 rounded-lg flex-shrink-0 mt-0.5 ${
+                notif.type === 'stock'
+                  ? 'bg-rose-500/10 text-rose-500 dark:text-rose-400'
+                  : 'bg-blue-500/10 text-blue-500 dark:text-blue-400'
+              }`}>
+                {notif.type === 'stock'
+                  ? <AlertTriangle className="w-4 h-4" />
+                  : <ShoppingBag className="w-4 h-4" />
+                }
+              </div>
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-tight">{notif.title}</p>
+                  <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                    notif.type === 'stock'
+                      ? 'bg-rose-500/10 text-rose-500 dark:text-rose-400'
+                      : 'bg-blue-500/10 text-blue-500 dark:text-blue-400'
+                  }`}>
+                    {notif.type === 'stock' ? 'Stock Alert' : 'Order'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-snug">{notif.body}</p>
+                <button
+                  onClick={() => handleNotifNavigate(notif)}
+                  className="mt-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition"
+                >
+                  {notif.type === 'stock' ? 'Click to inspect stock in Inventory →' : 'View Orders →'}
+                </button>
+              </div>
+              {/* Dismiss */}
+              <button
+                onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
+                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 transition opacity-0 group-hover:opacity-100 flex-shrink-0"
+                title="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen flex bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors duration-200 relative">
       {/* Mobile Overlay */}
@@ -259,8 +367,8 @@ function DashboardLayout() {
 
           {/* Bell + Theme toggle grouped */}
           <div className="flex items-center gap-1.5">
-            {/* Notification Bell */}
-            <div className="relative" ref={notifRef}>
+            {/* Notification Bell (desktop only — mobile uses the header bell below) */}
+            <div className="relative hidden md:block" ref={notifRef}>
               <button
                 onClick={() => setNotifOpen((p) => !p)}
                 className="relative p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-amber-500 transition-colors flex-shrink-0"
@@ -274,111 +382,8 @@ function DashboardLayout() {
                 )}
               </button>
 
-              {/* Notification Dropdown */}
-              {notifOpen && (
-                <div className="absolute left-0 top-full mt-2 w-80 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Bell className="w-4 h-4 text-amber-500 shrink-0" />
-                      <span className="text-xs font-extrabold text-neutral-900 dark:text-white uppercase tracking-wide truncate">Live Notifications</span>
-                      {unreadCount > 0 && (
-                        <span className="px-2 py-0.5 bg-amber-500 text-neutral-950 text-[10px] font-extrabold rounded-full shrink-0 whitespace-nowrap">
-                          {unreadCount} new
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={markAllRead}
-                      className="text-xs text-neutral-400 hover:text-amber-500 transition font-semibold shrink-0 whitespace-nowrap"
-                    >
-                      Mark all as read
-                    </button>
-                  </div>
-
-                  {/* Category Tabs */}
-                  <div className="flex items-center gap-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
-                    {[
-                      { label: `All (${notifications.length})`, key: 'all' },
-                      { label: `Orders (${orderNotifs.length})`, key: 'order' },
-                      { label: `Stock (${stockNotifs.length})`, key: 'stock' },
-                    ].map((tab) => (
-                      <button
-                        key={tab.key}
-                        onClick={() => setActiveNotifTab(tab.key)}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-                          activeNotifTab === tab.key
-                            ? 'bg-amber-500 text-neutral-950'
-                            : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Notification List */}
-                  <div className="max-h-72 overflow-y-auto">
-                    {visibleNotifs.length === 0 ? (
-                      <div className="py-8 text-center text-neutral-500 text-sm">
-                        <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500/50" />
-                        All clear! No notifications.
-                      </div>
-                    ) : (
-                      visibleNotifs.map((notif) => (
-                        <div
-                          key={notif.id}
-                          className={`flex items-start gap-3 px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 last:border-0 transition group ${
-                            !notif.read
-                              ? 'bg-amber-500/5 hover:bg-amber-500/10'
-                              : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
-                          }`}
-                        >
-                          {/* Icon */}
-                          <div className={`p-1.5 rounded-lg flex-shrink-0 mt-0.5 ${
-                            notif.type === 'stock'
-                              ? 'bg-rose-500/10 text-rose-500 dark:text-rose-400'
-                              : 'bg-blue-500/10 text-blue-500 dark:text-blue-400'
-                          }`}>
-                            {notif.type === 'stock'
-                              ? <AlertTriangle className="w-4 h-4" />
-                              : <ShoppingBag className="w-4 h-4" />
-                            }
-                          </div>
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-tight">{notif.title}</p>
-                              <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0 ${
-                                notif.type === 'stock'
-                                  ? 'bg-rose-500/10 text-rose-500 dark:text-rose-400'
-                                  : 'bg-blue-500/10 text-blue-500 dark:text-blue-400'
-                              }`}>
-                                {notif.type === 'stock' ? 'Stock Alert' : 'Order'}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-snug">{notif.body}</p>
-                            <button
-                              onClick={() => handleNotifNavigate(notif)}
-                              className="mt-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition"
-                            >
-                              {notif.type === 'stock' ? 'Click to inspect stock in Inventory →' : 'View Orders →'}
-                            </button>
-                          </div>
-                          {/* Dismiss */}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); dismissNotification(notif.id); }}
-                            className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 transition opacity-0 group-hover:opacity-100 flex-shrink-0"
-                            title="Dismiss"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Notification Dropdown (desktop sidebar bell) */}
+              {notifOpen && renderNotifDropdown('left-0 right-auto')}
             </div>
 
             {/* Theme toggle */}
@@ -456,17 +461,20 @@ function DashboardLayout() {
           </div>
           <div className="flex items-center gap-2">
             {/* Mobile Bell */}
-            <button
-              onClick={() => { setNotifOpen((p) => !p); if (!notifOpen) markAllRead(); }}
-              className="relative p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
-            >
-              <Bell className="w-4 h-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-rose-500 text-white text-[8px] font-extrabold px-0.5 animate-pulse">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+            <div className="relative" ref={mobileNotifRef}>
+              <button
+                onClick={() => setNotifOpen((p) => !p)}
+                className="relative p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-rose-500 text-white text-[8px] font-extrabold px-0.5 animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              {notifOpen && renderNotifDropdown('right-0 left-auto')}
+            </div>
             <button
               onClick={toggleTheme}
               className="p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
