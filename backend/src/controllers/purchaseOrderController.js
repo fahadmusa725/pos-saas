@@ -172,7 +172,6 @@ const updatePurchaseOrderStatus = async (req, res) => {
 
           if (allInStock) {
             await MenuItem.findByIdAndUpdate(menuItem._id, { isAvailable: true });
-            console.log(`Auto-reactivated menu item: ${menuItem.name}`);
           }
         }
       } catch (reactivationErr) {
@@ -299,7 +298,6 @@ const payPurchaseOrder = async (req, res) => {
 
           if (allInStock) {
             await MenuItem.findByIdAndUpdate(menuItem._id, { isAvailable: true });
-            console.log(`Auto-reactivated menu item on PO full payment: ${menuItem.name}`);
           }
         }
       } catch (reactivationErr) {

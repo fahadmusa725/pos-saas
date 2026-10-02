@@ -39,7 +39,7 @@ Message: ${message || '—'}
 Submitted At: ${demoRequest.createdAt.toLocaleString()}`,
       });
     } catch (emailError) {
-      console.log('Demo request notification email failed:', emailError.message);
+      console.error('Demo request notification email failed:', emailError.message);
     }
 
     res.status(201).json({ success: true, data: demoRequest });

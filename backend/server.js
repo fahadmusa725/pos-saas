@@ -34,16 +34,9 @@ const io = new Server(server, {
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
-
   // Har restaurant apne khud ke "room" mein join karega
   socket.on('joinRestaurant', (restaurantId) => {
     socket.join(restaurantId);
-    console.log(`Socket ${socket.id} joined restaurant room: ${restaurantId}`);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Socket disconnected:', socket.id);
   });
 });
 

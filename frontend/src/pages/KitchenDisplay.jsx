@@ -123,7 +123,6 @@ function KitchenDisplay() {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('KDS Connected to Socket server:', socket.id);
       if (user?.restaurantId) {
         socket.emit('joinRestaurant', user.restaurantId);
       }
@@ -131,7 +130,6 @@ function KitchenDisplay() {
 
     // Listen to real-time events emitted by backend orderController
     socket.on('newOrder', (newOrder) => {
-      console.log('KDS Received new order:', newOrder);
       playNewOrderSound();
       setOrders((prev) => [newOrder, ...prev.filter((o) => o._id !== newOrder._id)]);
       if (activeTab === 'history') fetchOrderHistory();

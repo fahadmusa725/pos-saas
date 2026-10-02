@@ -113,7 +113,6 @@ const updateInventoryItem = async (req, res) => {
 
         if (mItem.isAvailable !== allInStock) {
           await MenuItem.findByIdAndUpdate(mItem._id, { isAvailable: allInStock });
-          console.log(`Inventory update synced menu item availability: ${mItem.name} -> isAvailable: ${allInStock}`);
         }
       }
     } catch (syncErr) {

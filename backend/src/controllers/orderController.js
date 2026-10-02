@@ -193,7 +193,6 @@ exports.createOrder = async (req, res) => {
       await Customer.findByIdAndUpdate(customerId, {
         $inc: { creditBalance: total },
       });
-      console.log(`Updated customer ${customerId} creditBalance: +Rs. ${total}`);
     }
 
     if (orderType === 'dine-in' && tableId) {
@@ -255,7 +254,6 @@ exports.createOrder = async (req, res) => {
 
         for (const mItem of affectedMenuItems) {
           await MenuItem.findByIdAndUpdate(mItem._id, { isAvailable: false });
-          console.log(`Auto-deactivated menu item due to stock depletion (0 or less): ${mItem.name}`);
         }
       }
     } catch (recipeErr) {
@@ -509,7 +507,6 @@ exports.markAsPaid = async (req, res) => {
       await Customer.findByIdAndUpdate(order.customerId, {
         $inc: { creditBalance: creditAmountTotal },
       });
-      console.log(`Updated customer ${order.customerId} creditBalance: +Rs. ${creditAmountTotal}`);
     }
 
     // Append to existing breakdown
@@ -708,7 +705,6 @@ exports.addItemsToOrder = async (req, res) => {
 
         for (const mItem of affectedMenuItems) {
           await MenuItem.findByIdAndUpdate(mItem._id, { isAvailable: false });
-          console.log(`Auto-deactivated menu item due to stock depletion (0 or less): ${mItem.name}`);
         }
       }
     } catch (recipeErr) {
