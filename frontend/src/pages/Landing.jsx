@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import {
   Store,
   ArrowRight,
@@ -10,6 +11,7 @@ import {
   ShieldCheck,
   Users,
   Moon,
+  Sun,
   Check,
 } from 'lucide-react';
 
@@ -81,6 +83,7 @@ const PRO_FEATURES = [
 
 function Landing() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors">
@@ -93,12 +96,21 @@ function Landing() {
             </div>
             <span className="text-lg font-extrabold tracking-tight">DineFlow</span>
           </div>
-          <button
-            onClick={() => navigate('/login')}
-            className="px-4 py-2 rounded-xl text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-neutral-950 transition"
-          >
-            Login
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+              className="p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 transition-colors"
+            >
+              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-amber-400" />}
+            </button>
+            <button
+              onClick={() => navigate('/login')}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-neutral-950 transition"
+            >
+              Login
+            </button>
+          </div>
         </div>
       </header>
 
@@ -116,16 +128,16 @@ function Landing() {
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/request-demo')}
             className="w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-400 text-neutral-950 transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
           >
-            Get Started <ArrowRight className="w-4 h-4" />
+            Request a Demo <ArrowRight className="w-4 h-4" />
           </button>
           <button
             onClick={() => navigate('/login')}
             className="w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition"
           >
-            Login
+            Login to Your Restaurant
           </button>
         </div>
       </section>
@@ -219,20 +231,26 @@ function Landing() {
             Join DineFlow and bring your kitchen, floor, and books into one real-time system.
           </p>
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/request-demo')}
             className="mt-7 px-6 py-3 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-400 text-neutral-950 transition inline-flex items-center gap-2"
           >
-            Get Started <ArrowRight className="w-4 h-4" />
+            Request a Demo <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="border-t border-neutral-200 dark:border-neutral-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-400">
           <div className="flex items-center gap-2 font-bold text-neutral-700 dark:text-neutral-300">
             <Store className="w-4 h-4 text-amber-500" /> DineFlow
           </div>
+          <button
+            onClick={() => navigate('/request-demo')}
+            className="font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition"
+          >
+            Request a Demo
+          </button>
           <p>&copy; {new Date().getFullYear()} DineFlow. All rights reserved.</p>
         </div>
       </footer>

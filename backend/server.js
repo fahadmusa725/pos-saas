@@ -1,7 +1,9 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const dotenv = require('dotenv');
 const cors = require('cors');
 const helmet = require('helmet');
 const connectDB = require('./src/config/db');
@@ -20,8 +22,8 @@ const reportRoutes = require('./src/routes/reportRoutes');
 const couponRoutes = require('./src/routes/couponRoutes');
 const settingsRoutes = require('./src/routes/settingsRoutes');
 const superAdminRoutes = require('./src/routes/superAdminRoutes');
+const demoRequestRoutes = require('./src/routes/demoRequestRoutes');
 
-dotenv.config();
 connectDB();
 
 const app = express();
@@ -78,6 +80,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/super-admin', superAdminRoutes);
+app.use('/api/demo-requests', demoRequestRoutes);
 
 const PORT = process.env.PORT || 5000;
 

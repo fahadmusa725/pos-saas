@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Landing from './pages/Landing';
+import RequestDemo from './pages/RequestDemo';
 import Login from './pages/Login';
 import Overview from './pages/Overview';
 import Categories from './pages/Categories';
@@ -22,6 +23,7 @@ import WaiterScreen from './pages/WaiterScreen';
 import SuperAdminLayout from './components/SuperAdminLayout';
 import SuperAdminOverview from './pages/SuperAdminOverview';
 import RestaurantsList from './pages/RestaurantsList';
+import DemoRequests from './pages/DemoRequests';
 import DashboardLayout from './components/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -39,6 +41,7 @@ function App() {
       />
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/request-demo" element={<RequestDemo />} />
         <Route path="/login" element={<Login />} />
 
         <Route
@@ -96,6 +99,7 @@ function App() {
         >
           <Route index element={<SuperAdminOverview />} />
           <Route path="restaurants" element={<RestaurantsList />} />
+          <Route path="demo-requests" element={<DemoRequests />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" />} />

@@ -10,6 +10,7 @@ import {
   Sun,
   Moon,
   Menu,
+  MessageSquareText,
 } from 'lucide-react';
 
 function SuperAdminLayout() {
@@ -38,6 +39,7 @@ function SuperAdminLayout() {
   const navItems = [
     { label: 'Platform Overview', path: '/super-admin', icon: LayoutDashboard },
     { label: 'Restaurants Management', path: '/super-admin/restaurants', icon: Building2 },
+    { label: 'Demo Requests', path: '/super-admin/demo-requests', icon: MessageSquareText },
   ];
 
   return (

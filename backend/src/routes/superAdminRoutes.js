@@ -10,6 +10,10 @@ const {
   deleteRestaurant,
   resetAdminPassword,
 } = require('../controllers/superAdminController');
+const {
+  getDemoRequests,
+  updateDemoRequestStatus,
+} = require('../controllers/demoRequestController');
 
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -30,5 +34,8 @@ router.route('/restaurants/:id')
 router.patch('/restaurants/:id/suspend', suspendRestaurant);
 router.patch('/restaurants/:id/activate', activateRestaurant);
 router.patch('/restaurants/:id/reset-admin-password', resetAdminPassword);
+
+router.get('/demo-requests', getDemoRequests);
+router.patch('/demo-requests/:id/status', updateDemoRequestStatus);
 
 module.exports = router;
