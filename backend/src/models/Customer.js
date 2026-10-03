@@ -28,8 +28,8 @@ const customerSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
-    // loyaltyPoints: MANUAL ONLY — admin sets this number via edit form.
-    // No automatic accrual per order — that is a future module (not in current scope).
+    // loyaltyPoints: MANUAL ONLY. Admin sets this number via edit form.
+    // No automatic accrual per order. That is a future module (not in current scope).
     loyaltyPoints: {
       type: Number,
       default: 0,

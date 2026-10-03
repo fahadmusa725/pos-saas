@@ -104,7 +104,6 @@ const updatePurchaseOrderStatus = async (req, res) => {
       });
     }
 
-    // Stock update & Auto-Expense creation on receiving purchase order
     if (status === 'received') {
       for (const item of order.items) {
         await InventoryItem.findOneAndUpdate(
@@ -113,7 +112,6 @@ const updatePurchaseOrderStatus = async (req, res) => {
         );
       }
 
-      // Silent PO-to-Expense Auto Creation
       try {
         const Expense = require('../models/Expense');
         const Supplier = require('../models/Supplier');
@@ -148,7 +146,6 @@ const updatePurchaseOrderStatus = async (req, res) => {
         const MenuItem = require('../models/MenuItem');
         const InventoryItem = require('../models/InventoryItem');
 
-        // Find all unavailable menu items for this restaurant that have recipes
         const unavailableItems = await MenuItem.find({
           restaurantId: req.tenantId,
           isAvailable: false,
@@ -213,7 +210,6 @@ const payPurchaseOrder = async (req, res) => {
     const currentPaid = Number(order.amountPaid) || 0;
     const remaining = order.totalCost - currentPaid;
 
-    // Overpayment Guard
     if (paymentAmount > remaining) {
       return res.status(400).json({
         success: false,
@@ -238,7 +234,6 @@ const payPurchaseOrder = async (req, res) => {
       order.status = 'received';
       justReceived = true;
 
-      // Stock update
       for (const item of order.items) {
         await InventoryItem.findOneAndUpdate(
           { _id: item.inventoryItemId, restaurantId: req.tenantId },
@@ -246,7 +241,6 @@ const payPurchaseOrder = async (req, res) => {
         );
       }
 
-      // Silent Expense creation
       try {
         const Expense = require('../models/Expense');
         const Supplier = require('../models/Supplier');
@@ -271,7 +265,6 @@ const payPurchaseOrder = async (req, res) => {
         console.error('Silent PO-to-Expense auto creation error:', expenseErr.message);
       }
 
-      // Silent Auto-Reactivation
       try {
         const MenuItem = require('../models/MenuItem');
 

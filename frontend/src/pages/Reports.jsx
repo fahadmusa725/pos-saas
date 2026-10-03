@@ -17,7 +17,6 @@ function Reports() {
   const [loading, setLoading] = useState(true);
   const [preset, setPreset] = useState('30Days'); // 'today' | '7Days' | '30Days' | 'thisYear' | 'custom'
 
-  // Date Range State
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -25,7 +24,6 @@ function Reports() {
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  // Tab Data States
   const [financialData, setFinancialData] = useState(null);
   const [categorySales, setCategorySales] = useState({ grandTotal: 0, data: [] });
   const [bestSellers, setBestSellers] = useState([]);
@@ -35,7 +33,6 @@ function Reports() {
   const [supplierData, setSupplierData] = useState({ data: [], summary: {} });
   const [error, setError] = useState(null);
 
-  // Preset Date Handlers
   const applyPreset = (type) => {
     setPreset(type);
     const now = new Date();
@@ -115,7 +112,6 @@ function Reports() {
 
   return (
     <div className="space-y-8 pb-12 text-neutral-100">
-      {/* Top Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
@@ -126,7 +122,6 @@ function Reports() {
           </p>
         </div>
 
-        {/* Date Filter Controls — Strictly Single Line */}
         <div className="flex items-center gap-2 bg-neutral-900/90 border border-neutral-800 p-1.5 rounded-xl whitespace-nowrap overflow-hidden">
           <button
             onClick={() => applyPreset('today')}
@@ -193,7 +188,6 @@ function Reports() {
         </div>
       </div>
 
-      {/* Tabs Navigation — Clear vertical space added above */}
       <div className="flex flex-wrap items-center gap-2.5 pt-2 pb-3 border-b border-neutral-800">
         {tabs.map((t) => {
           const Icon = t.icon;
@@ -215,7 +209,6 @@ function Reports() {
         })}
       </div>
 
-      {/* Content Area */}
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center space-y-3">
           <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin" />
@@ -234,10 +227,8 @@ function Reports() {
         </div>
       ) : (
         <>
-          {/* TAB 1: FINANCIAL OVERVIEW */}
           {activeTab === 'financial-overview' && financialData && (
             <div className="space-y-6">
-              {/* Metric Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-5 shadow-xs">
                   <span className="text-[10px] font-bold tracking-wider text-neutral-400 uppercase">
@@ -286,7 +277,6 @@ function Reports() {
                 </div>
               </div>
 
-              {/* Financial Ledger & Cash Flow Summary */}
               <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl overflow-hidden shadow-xs">
                 <div className="p-4 border-b border-neutral-800 flex items-center gap-2">
                   <Landmark className="w-4 h-4 text-amber-500" />
@@ -361,7 +351,6 @@ function Reports() {
                 </div>
               </div>
 
-              {/* Revenue Trend Over Time Chart */}
               <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-6 shadow-xs space-y-4">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-amber-500" />
@@ -414,7 +403,6 @@ function Reports() {
             </div>
           )}
 
-          {/* TAB 2: CASH & LEDGER DETAIL */}
           {activeTab === 'cash-ledger' && financialData && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -456,7 +444,6 @@ function Reports() {
                 </div>
               </div>
 
-              {/* Detailed Breakdown Ledger */}
               <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl overflow-hidden shadow-xs">
                 <div className="p-4 border-b border-neutral-800">
                   <h2 className="text-xs font-extrabold text-white tracking-wider uppercase">
@@ -538,10 +525,8 @@ function Reports() {
             </div>
           )}
 
-          {/* TAB 3: CATEGORY SALES */}
           {activeTab === 'category-sales' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Donut Chart */}
               <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-6 shadow-xs space-y-4">
                 <div>
                   <h2 className="text-xs font-extrabold text-white tracking-wider uppercase">
@@ -584,7 +569,6 @@ function Reports() {
                 )}
               </div>
 
-              {/* Category Details List */}
               <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-6 shadow-xs space-y-4">
                 <h2 className="text-xs font-extrabold text-white tracking-wider uppercase">
                   CATEGORY REVENUE DETAILS
@@ -618,7 +602,6 @@ function Reports() {
             </div>
           )}
 
-          {/* TAB 4: BEST SELLERS */}
           {activeTab === 'best-sellers' && (
             <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl overflow-hidden shadow-xs">
               <div className="p-5 border-b border-neutral-800">
@@ -658,7 +641,6 @@ function Reports() {
             </div>
           )}
 
-          {/* TAB 5: PEAK BUSIEST HOURS */}
           {activeTab === 'peak-hours' && (
             <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-6 shadow-xs space-y-4">
               <div>
@@ -689,7 +671,6 @@ function Reports() {
             </div>
           )}
 
-          {/* TAB 6: STAFF PERFORMANCE */}
           {activeTab === 'staff-performance' && (
             <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl overflow-hidden shadow-xs">
               <div className="p-5 border-b border-neutral-800">
@@ -736,10 +717,8 @@ function Reports() {
             </div>
           )}
 
-          {/* TAB 7: CUSTOMER REPORT */}
           {activeTab === 'customer-report' && (
             <div className="space-y-6">
-              {/* Credit Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-5 shadow-xs">
                   <span className="text-[10px] font-bold tracking-wider text-sky-400 uppercase">
@@ -768,7 +747,6 @@ function Reports() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Outstanding Credit List */}
                 <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl overflow-hidden shadow-xs">
                   <div className="p-4 border-b border-neutral-800 flex items-center justify-between">
                     <h2 className="text-xs font-extrabold text-rose-400 tracking-wider uppercase">
@@ -810,7 +788,6 @@ function Reports() {
                   </div>
                 </div>
 
-                {/* Top Spenders List */}
                 <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl overflow-hidden shadow-xs">
                   <div className="p-4 border-b border-neutral-800">
                     <h2 className="text-xs font-extrabold text-amber-500 tracking-wider uppercase">
@@ -855,7 +832,6 @@ function Reports() {
             </div>
           )}
 
-          {/* TAB 8: SUPPLIER REPORT */}
           {activeTab === 'supplier-report' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -877,7 +853,6 @@ function Reports() {
                 </div>
               </div>
 
-              {/* Per Supplier Breakdown Table */}
               <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl overflow-hidden shadow-xs">
                 <div className="p-5 border-b border-neutral-800">
                   <h2 className="text-xs font-extrabold text-white tracking-wider uppercase">

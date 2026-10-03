@@ -39,14 +39,11 @@ export default function ScreenNavPanel({ theme = 'dark' }) {
   const { user, logout } = useAuthStore();
   const location = useLocation();
 
-  // Sidebar panel state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Restaurant info (fetched live from API)
   const [restaurantName, setRestaurantName] = useState('');
   const [restaurantPlan, setRestaurantPlan] = useState('basic');
 
-  // Fetch restaurant info on mount
   useEffect(() => {
     if (user?.restaurantId) {
       api.get('/auth/me/restaurant')
@@ -76,7 +73,6 @@ export default function ScreenNavPanel({ theme = 'dark' }) {
 
   return (
     <>
-      {/* ── Hamburger button only ── */}
       <button
         onClick={() => setSidebarOpen(true)}
         className="p-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition border border-neutral-700"
@@ -85,18 +81,14 @@ export default function ScreenNavPanel({ theme = 'dark' }) {
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* ── Full Sidebar Overlay ── */}
       {sidebarOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/70 backdrop-blur-xs z-40"
             onClick={() => setSidebarOpen(false)}
           />
 
-          {/* Sidebar Drawer */}
           <aside className="fixed top-0 left-0 h-full w-72 bg-neutral-900 border-r border-neutral-800 z-50 flex flex-col shadow-2xl animate-slide-in-left">
-            {/* Sidebar Header */}
             <div className="p-5 border-b border-neutral-800 flex items-center justify-between flex-shrink-0 bg-neutral-950">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
@@ -115,7 +107,6 @@ export default function ScreenNavPanel({ theme = 'dark' }) {
               </button>
             </div>
 
-            {/* User Info */}
             <div className="px-5 py-3 border-b border-neutral-800/60 bg-neutral-950/50 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-amber-500 uppercase tracking-wide truncate">
@@ -127,7 +118,6 @@ export default function ScreenNavPanel({ theme = 'dark' }) {
               </div>
             </div>
 
-            {/* Nav Links */}
             <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
               {APP_MODULES.filter(isAllowed).map((item) => {
                 const Icon = MODULE_ICONS[item.id] || LayoutDashboard;
@@ -150,7 +140,6 @@ export default function ScreenNavPanel({ theme = 'dark' }) {
               })}
             </nav>
 
-            {/* Logout */}
             <div className="p-3 border-t border-neutral-800 flex-shrink-0">
               <button
                 onClick={() => { logout(); }}

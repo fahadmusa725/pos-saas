@@ -36,13 +36,11 @@ function Tables() {
   const [activeSection, setActiveSection] = useState('All');
   const [togglingId, setTogglingId] = useState(null);
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [isAddingNewSection, setIsAddingNewSection] = useState(false);
 
-  // ConfirmModal state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
@@ -61,7 +59,6 @@ function Tables() {
     fetchTables();
   }, []);
 
-  // Compute all unique sections across tables & defaults
   const allSectionsList = useMemo(() => {
     const set = new Set(DEFAULT_SECTIONS);
     tables.forEach((t) => {
@@ -183,7 +180,6 @@ function Tables() {
   return (
     <div className="space-y-6">
 
-      {/* Header Row */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
@@ -203,7 +199,6 @@ function Tables() {
         </button>
       </div>
 
-      {/* Stats Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total Tables', value: stats.total, color: 'text-neutral-900 dark:text-white', bg: 'bg-neutral-500/10' },
@@ -221,7 +216,6 @@ function Tables() {
         ))}
       </div>
 
-      {/* Section Filter Tabs */}
       <div className="flex items-center gap-2 flex-wrap bg-white dark:bg-neutral-900 p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs">
         <LayoutGrid className="w-4 h-4 text-neutral-400 shrink-0" />
         {['All', ...allSectionsList].map((section) => {
@@ -249,7 +243,6 @@ function Tables() {
         })}
       </div>
 
-      {/* Grid of Tables */}
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((n) => (
@@ -279,7 +272,6 @@ function Tables() {
                     : 'border-neutral-200 dark:border-neutral-800 hover:border-amber-500/40'
                 }`}
               >
-                {/* Action Buttons (top-right) - always visible */}
                 <div className="absolute top-2.5 right-2.5 flex items-center gap-1">
                   <button
                     onClick={() => startEdit(table)}
@@ -297,7 +289,6 @@ function Tables() {
                   </button>
                 </div>
 
-                {/* Table Icon + Section badge */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 w-fit">
                     <Armchair className="w-5 h-5" />
@@ -309,7 +300,6 @@ function Tables() {
                   )}
                 </div>
 
-                {/* Table name */}
                 <p className="text-xl font-extrabold text-neutral-900 dark:text-white">
                   Table {table.tableNumber}
                 </p>
@@ -318,13 +308,11 @@ function Tables() {
                   {table.capacity} Seats
                 </p>
 
-                {/* Status Badge */}
                 <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${statusCfg.cls}`}>
                   {statusCfg.icon}
                   {statusCfg.label}
                 </span>
 
-                {/* Quick Toggle Button */}
                 <button
                   onClick={() => toggleStatus(table)}
                   disabled={isToggling || table.status === 'reserved'}
@@ -350,12 +338,10 @@ function Tables() {
         </div>
       )}
 
-      {/* ── Add / Edit Table Modal ── */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden my-6">
 
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-neutral-800 bg-neutral-950">
               <div className="flex items-center gap-2">
                 <div className={`p-2 rounded-xl ${editingId ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
@@ -373,7 +359,6 @@ function Tables() {
               </button>
             </div>
 
-            {/* Modal Body Form */}
             <form id="table-form" onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">
@@ -456,7 +441,6 @@ function Tables() {
               </div>
             </form>
 
-            {/* Modal Footer */}
             <div className="p-4 border-t border-neutral-800 flex justify-end gap-3 bg-neutral-950">
               <button
                 type="button"

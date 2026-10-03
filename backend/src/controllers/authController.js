@@ -12,16 +12,13 @@ exports.registerRestaurant = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
     }
 
-    // Check if restaurant email already exists
     const existingRestaurant = await Restaurant.findOne({ email });
     if (existingRestaurant) {
       return res.status(400).json({ success: false, message: 'Restaurant with this email already exists' });
     }
 
-    // Generate slug from restaurant name
     const slug = restaurantName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
 
-    // Create restaurant
     const restaurant = await Restaurant.create({
       name: restaurantName,
       slug,
@@ -29,7 +26,6 @@ exports.registerRestaurant = async (req, res) => {
       phone,
     });
 
-    // Create restaurant-admin user
     const user = await User.create({
       restaurantId: restaurant._id,
       name: restaurantName + ' Admin',
@@ -87,7 +83,6 @@ exports.login = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Account is deactivated' });
     }
 
-    // Check restaurant status (suspension & trial expiry) for non-super-admin users
     if (user.role !== 'super-admin' && user.restaurantId) {
       const Restaurant = require('../models/Restaurant');
       const restaurant = await Restaurant.findById(user.restaurantId);

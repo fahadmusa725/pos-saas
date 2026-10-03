@@ -10,7 +10,6 @@ function PurchaseOrders() {
   const [loading, setLoading]               = useState(true);
   const [submitting, setSubmitting]         = useState(false);
 
-  // PO Payment Modal state
   const [payModalPO, setPayModalPO]         = useState(null);
   const [payAmount, setPayAmount]           = useState('');
   const [paying, setPaying]                 = useState(false);
@@ -69,7 +68,6 @@ function PurchaseOrders() {
     return poItems.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.costPerUnit) || 0), 0);
   };
 
-  // Filter inventory items to those supplied by the selected supplier (if any)
   const filteredInventoryItems = (() => {
     if (!supplierId) return inventoryItems;
     const selectedSupplier = suppliers.find((s) => s._id === supplierId);
@@ -172,7 +170,6 @@ function PurchaseOrders() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
@@ -191,9 +188,7 @@ function PurchaseOrders() {
         </button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Total Purchase Orders */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex items-center gap-4 shadow-xs">
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
             <ClipboardList className="w-6 h-6 text-amber-500" />
@@ -208,7 +203,6 @@ function PurchaseOrders() {
           </div>
         </div>
 
-        {/* Total Purchasing Expenses */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex items-center gap-4 shadow-xs">
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
             <DollarSign className="w-6 h-6 text-emerald-500" />
@@ -225,7 +219,6 @@ function PurchaseOrders() {
       </div>
 
 
-      {/* Create Form */}
       {showCreateForm && (
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
           <h2 className="text-lg font-bold text-neutral-900 dark:text-white">New Purchase Order</h2>
@@ -261,7 +254,6 @@ function PurchaseOrders() {
               </div>
             </div>
 
-            {/* Dynamic Items Array */}
             <div className="space-y-3 pt-2">
               <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Order Items *</label>
               {poItems.map((item, index) => (
@@ -337,7 +329,6 @@ function PurchaseOrders() {
         </div>
       )}
 
-      {/* PO Table */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
@@ -423,7 +414,6 @@ function PurchaseOrders() {
         )}
       </div>
 
-      {/* PO Payment Modal */}
       {payModalPO && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -433,7 +423,7 @@ function PurchaseOrders() {
                   Record PO Payment
                 </h2>
                 <p className="text-xs text-neutral-500">
-                  PO #{payModalPO.poNumber || payModalPO._id.slice(-6).toUpperCase()} — {payModalPO.supplierId?.name || 'Direct Supplier'}
+                  PO #{payModalPO.poNumber || payModalPO._id.slice(-6).toUpperCase()}: {payModalPO.supplierId?.name || 'Direct Supplier'}
                 </p>
               </div>
               <button onClick={closePayModal} className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200">

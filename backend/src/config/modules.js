@@ -22,7 +22,7 @@ const APP_MODULES = [
 ];
 
 const DEFAULT_ROLE_PERMISSIONS = {
-  // cashier: gets 'customers' access — needed for phone lookup during order creation
+  // cashier: gets 'customers' access, needed for phone lookup during order creation
   cashier: ['orders', 'order-history', 'tables', 'customers'],
   waiter: ['orders', 'order-history', 'tables', 'kds', 'waiter-screen'],
   kitchen: ['kds'],

@@ -39,7 +39,6 @@ function Login() {
     <div className="min-h-screen flex items-center justify-center bg-neutral-100 dark:bg-neutral-950 px-4 transition-colors">
       <div className="max-w-md w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8 shadow-xl space-y-6">
 
-        {/* Logo & Header */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto shadow-xs">
             <Store className="w-6 h-6" />
@@ -113,7 +112,7 @@ function Login() {
 
         <div className="text-center pt-2">
           <p className="text-[11px] text-neutral-400">
-            DineFlow — Multi-Tenant POS & Inventory Management SaaS
+            DineFlow: Multi-Tenant POS & Inventory Management SaaS
           </p>
         </div>
       </div>

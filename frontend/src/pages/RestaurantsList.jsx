@@ -47,7 +47,6 @@ function RestaurantsList() {
   const [loading, setLoading]           = useState(true);
   const [submitting, setSubmitting]     = useState(false);
 
-  // Modals
   const [showAddModal, setShowAddModal]   = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingRest, setEditingRest]     = useState(null);
@@ -66,16 +65,13 @@ function RestaurantsList() {
     adminEmail: '',
   });
 
-  // Quick Trial Modal State
   const [quickTrialRest, setQuickTrialRest] = useState(null);
   const [quickTrialOption, setQuickTrialOption] = useState('14');
   const [quickTrialDate, setQuickTrialDate] = useState(getFutureDateStr(14));
 
-  // Password Reset Modal state
   const [resetTargetRest, setResetTargetRest] = useState(null);
   const [newPasswordInput, setNewPasswordInput] = useState('');
 
-  // Delete Danger Modal
   const [deleteTarget, setDeleteTarget]   = useState(null);
   const [confirmNameInput, setConfirmNameInput] = useState('');
 
@@ -97,7 +93,6 @@ function RestaurantsList() {
     fetchRestaurants();
   }, [fetchRestaurants]);
 
-  // Create Restaurant Handler
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -120,7 +115,6 @@ function RestaurantsList() {
     }
   };
 
-  // Edit Restaurant Handler
   const openEditModal = (rest) => {
     setEditingRest(rest);
     const status = rest.subscriptionStatus || (rest.isActive ? 'active' : 'suspended');
@@ -159,7 +153,6 @@ function RestaurantsList() {
     }
   };
 
-  // Quick Trial Modal Handler
   const openQuickTrialModal = (rest) => {
     setQuickTrialRest(rest);
     setQuickTrialOption('14');
@@ -185,7 +178,6 @@ function RestaurantsList() {
     }
   };
 
-  // Password Reset Handler
   const openResetPasswordModal = (rest) => {
     setResetTargetRest(rest);
     setNewPasswordInput('');
@@ -214,7 +206,6 @@ function RestaurantsList() {
     }
   };
 
-  // Suspend / Activate Toggle
   const handleToggleSuspend = async (rest) => {
     try {
       if (rest.isActive && rest.subscriptionStatus !== 'suspended') {
@@ -230,7 +221,6 @@ function RestaurantsList() {
     }
   };
 
-  // Permanent Delete Handler
   const openDeleteModal = (rest) => {
     setDeleteTarget(rest);
     setConfirmNameInput('');
@@ -280,7 +270,6 @@ function RestaurantsList() {
         </button>
       </div>
 
-      {/* Table Section */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
@@ -319,7 +308,7 @@ function RestaurantsList() {
                     <td className="px-6 py-4 text-neutral-600 dark:text-neutral-300">
                       <div className="flex items-center gap-1.5">
                         <Mail className="w-3.5 h-3.5 text-neutral-400" />
-                        <span>{rest.owner?.email || '—'}</span>
+                        <span>{rest.owner?.email || '-'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -424,14 +413,13 @@ function RestaurantsList() {
         )}
       </div>
 
-      {/* QUICK SET/EXTEND TRIAL MODAL */}
       {quickTrialRest && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
               <div className="flex items-center gap-2 text-amber-500 font-extrabold text-base">
                 <Clock className="w-5 h-5" />
-                <span>Set / Extend Trial — {quickTrialRest.name}</span>
+                <span>Set / Extend Trial: {quickTrialRest.name}</span>
               </div>
               <button onClick={() => setQuickTrialRest(null)} className="text-neutral-400 hover:text-white">
                 <X className="w-5 h-5" />
@@ -511,7 +499,6 @@ function RestaurantsList() {
         </div>
       )}
 
-      {/* ADD RESTAURANT MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
@@ -548,7 +535,6 @@ function RestaurantsList() {
                 </div>
               </div>
 
-              {/* Status & Trial Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold uppercase text-neutral-400 mb-1">Initial Status *</label>
@@ -690,7 +676,6 @@ function RestaurantsList() {
         </div>
       )}
 
-      {/* EDIT RESTAURANT MODAL */}
       {showEditModal && editingRest && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
@@ -851,7 +836,6 @@ function RestaurantsList() {
         </div>
       )}
 
-      {/* RESET ADMIN PASSWORD MODAL */}
       {resetTargetRest && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
@@ -916,7 +900,6 @@ function RestaurantsList() {
         </div>
       )}
 
-      {/* DANGER CONFIRM DELETE MODAL */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-neutral-900 border-2 border-rose-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">

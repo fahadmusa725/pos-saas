@@ -11,10 +11,8 @@ function Categories() {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Edit state
   const [editingId, setEditingId] = useState(null);
 
-  // ConfirmModal state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
@@ -43,7 +41,6 @@ function Categories() {
     setEditingId(cat._id);
     setName(cat.name);
     setDescription(cat.description || '');
-    // Scroll to form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -91,7 +88,6 @@ function Categories() {
         </p>
       </div>
 
-      {/* Create / Edit Form */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -153,7 +149,6 @@ function Categories() {
         </form>
       </div>
 
-      {/* Categories List Table */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
@@ -195,7 +190,7 @@ function Categories() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400">{cat.description || '—'}</td>
+                    <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400">{cat.description || '-'}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-1">
                         <button

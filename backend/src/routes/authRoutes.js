@@ -8,7 +8,6 @@ const Restaurant = require('../models/Restaurant');
 router.post('/register-restaurant', registerRestaurant);
 router.post('/login', login);
 
-// Test protected route
 router.get('/me', protect, setTenant, (req, res) => {
   res.status(200).json({
     success: true,

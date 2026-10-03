@@ -92,13 +92,11 @@ function Inventory() {
     }
   }, [highlightId, loading]);
 
-  // Stats
   const totalItems = items.length;
   const lowStockCount = items.filter(i => i.currentStock <= i.reorderLevel && i.currentStock > 0).length;
   const outOfStockCount = items.filter(i => i.currentStock <= 0).length;
   const totalAssetValue = items.reduce((acc, i) => acc + i.currentStock * i.costPerUnit, 0);
 
-  // Filtered items
   const filteredItems = useMemo(() => items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
@@ -159,7 +157,6 @@ function Inventory() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
@@ -178,7 +175,6 @@ function Inventory() {
         </button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex items-center gap-4 shadow-xs">
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
@@ -217,7 +213,6 @@ function Inventory() {
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
@@ -260,7 +255,6 @@ function Inventory() {
         )}
       </div>
 
-      {/* Inventory Table */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
@@ -376,7 +370,6 @@ function Inventory() {
         )}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">

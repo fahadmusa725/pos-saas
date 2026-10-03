@@ -28,7 +28,6 @@ function Expenses() {
   const [loading, setLoading]           = useState(true);
   const [submitting, setSubmitting]     = useState(false);
 
-  // Date filters
   const now = new Date();
   const firstDayStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const todayStr = now.toISOString().split('T')[0];
@@ -37,7 +36,6 @@ function Expenses() {
   const [endDate, setEndDate]           = useState(todayStr);
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // Modal & Delete
   const [showModal, setShowModal]       = useState(false);
   const [editingId, setEditingId]       = useState(null);
   const [form, setForm]                 = useState(EMPTY_FORM);
@@ -145,13 +143,11 @@ function Expenses() {
         </button>
       </div>
 
-      {/* Date & Category Filter & Summary Banner */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
         <div className="flex justify-between items-center flex-wrap gap-4">
           <div className="flex items-center gap-3 flex-wrap">
             <Filter className="w-4 h-4 text-amber-500" />
 
-            {/* Category Dropdown Filter */}
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold uppercase text-neutral-500">Category:</label>
               <select
@@ -203,7 +199,6 @@ function Expenses() {
           </div>
         </div>
 
-        {/* Category Breakdown Badges (Clickable filters) */}
         <div className="flex flex-wrap gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 items-center">
           <span className="text-xs text-neutral-400 font-semibold mr-1">Quick Category Filter:</span>
           <button
@@ -236,7 +231,6 @@ function Expenses() {
         </div>
       </div>
 
-      {/* Expenses Table */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
@@ -270,7 +264,7 @@ function Expenses() {
                     <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400 font-mono">
                       {new Date(exp.date).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">{exp.description || '—'}</td>
+                    <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">{exp.description || '-'}</td>
                     <td className="px-6 py-4 text-right space-x-1">
                       <button
                         onClick={() => openEdit(exp)}
@@ -295,7 +289,6 @@ function Expenses() {
         )}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">

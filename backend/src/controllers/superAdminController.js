@@ -11,7 +11,6 @@ const PurchaseOrder = require('../models/PurchaseOrder');
 const Expense = require('../models/Expense');
 const Coupon = require('../models/Coupon');
 
-// Helper to generate unique slug
 const generateSlug = (name) => {
   return name
     .toLowerCase()
@@ -53,7 +52,6 @@ const getAllRestaurants = async (req, res) => {
     const result = await Promise.all(
       restaurants.map(async (r) => {
         const doc = r.toObject();
-        // Find owner restaurant-admin
         const owner = await User.findOne({
           restaurantId: r._id,
           role: 'restaurant-admin',
@@ -107,7 +105,6 @@ const createRestaurant = async (req, res) => {
 
     const cleanEmail = adminEmail.toLowerCase().trim();
 
-    // Duplicate email check across ALL users
     const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.status(400).json({
@@ -129,14 +126,12 @@ const createRestaurant = async (req, res) => {
       if (trialEndsAt) {
         finalTrialEndsAt = new Date(trialEndsAt);
       } else {
-        // Fallback default: 14 days from now
         finalTrialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
       }
     } else if (trialEndsAt) {
       finalTrialEndsAt = new Date(trialEndsAt);
     }
 
-    // 1. Create Restaurant document
     const restaurant = await Restaurant.create({
       name,
       slug,
@@ -149,7 +144,6 @@ const createRestaurant = async (req, res) => {
       isActive: status !== 'suspended',
     });
 
-    // 2. Create primary restaurant-admin user
     const adminUser = await User.create({
       restaurantId: restaurant._id,
       name: adminName,
@@ -219,7 +213,6 @@ const updateRestaurant = async (req, res) => {
         }
         restaurant.trialEndsAt = parsedDate;
       } else if (!restaurant.trialEndsAt) {
-        // Fallback default 14 days if turning on trial with no date specified
         restaurant.trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
       }
     } else if (trialEndsAt !== undefined) {
@@ -228,7 +221,6 @@ const updateRestaurant = async (req, res) => {
 
     await restaurant.save();
 
-    // Update primary restaurant-admin email if provided
     if (adminEmail && adminEmail.trim()) {
       const cleanEmail = adminEmail.trim().toLowerCase();
       const adminUser = await User.findOne({
@@ -237,7 +229,6 @@ const updateRestaurant = async (req, res) => {
       });
 
       if (adminUser && adminUser.email !== cleanEmail) {
-        // Duplicate email validation across ALL users
         const existingEmailUser = await User.findOne({ email: cleanEmail });
         if (existingEmailUser) {
           return res.status(400).json({
@@ -356,7 +347,7 @@ const deleteRestaurant = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Restaurant not found' });
     }
 
-    // Cascading Permanent Deletion across all collections linked to restaurantId
+    // Cascades permanent deletion to every collection linked to restaurantId
     await Promise.all([
       User.deleteMany({ restaurantId }),
       Category.deleteMany({ restaurantId }),

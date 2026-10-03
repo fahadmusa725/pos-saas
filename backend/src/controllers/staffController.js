@@ -20,7 +20,6 @@ const getStaffMembers = async (req, res) => {
       }
     }
 
-    // Aggregate handled orders count per staff member
     const staffIds = staff.map((s) => s._id);
     const orderCounts = await Order.aggregate([
       {
@@ -76,7 +75,6 @@ const createStaffMember = async (req, res) => {
       });
     }
 
-    // Strict permissions array validation against APP_MODULES
     let finalPermissions = DEFAULT_ROLE_PERMISSIONS[role] || [];
     if (permissions && Array.isArray(permissions)) {
       const invalid = permissions.filter((p) => !VALID_MODULE_IDS.includes(p));
@@ -94,7 +92,6 @@ const createStaffMember = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already exists' });
     }
 
-    // Auto-generate password if not provided by admin
     const finalPassword = password && password.trim().length >= 6
       ? password.trim()
       : Math.random().toString(36).slice(-8) + 'A1!';

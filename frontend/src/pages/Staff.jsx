@@ -11,11 +11,9 @@ function Staff() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
 
-  // ConfirmModal state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
-  // Form State
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -210,7 +208,6 @@ function Staff() {
         </button>
       </div>
 
-      {/* Staff Table */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
@@ -296,7 +293,6 @@ function Staff() {
         )}
       </div>
 
-      {/* Add / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-8">
@@ -369,7 +365,6 @@ function Staff() {
                 </div>
               )}
 
-              {/* Module Permissions Checkboxes */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
                   Module Permissions
@@ -409,7 +404,6 @@ function Staff() {
         </div>
       )}
 
-      {/* Generated Password Result Modal */}
       {createdPasswordModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-sm w-full p-6 text-center space-y-3">

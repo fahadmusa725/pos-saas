@@ -37,7 +37,7 @@ exports.protect = async (req, res, next) => {
   }
 };
 
-// Role-based access control — specific roles hi allow karega
+// Role-based access control: specific roles hi allow karega
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {

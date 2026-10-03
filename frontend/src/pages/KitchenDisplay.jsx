@@ -31,13 +31,11 @@ function KitchenDisplay() {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const audioEnabledRef = useRef(true); // ref so socket callbacks get fresh value
 
-  // Notification bell state
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef(null);
 
-  // History tab states
   const [historyOrders, setHistoryOrders] = useState([]);
   const [historyLimit, setHistoryLimit] = useState(50);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -117,7 +115,6 @@ function KitchenDisplay() {
   useEffect(() => {
     fetchActiveOrders();
 
-    // Socket.io connection setup
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
     const socket = io(socketUrl);
     socketRef.current = socket;
@@ -128,7 +125,6 @@ function KitchenDisplay() {
       }
     });
 
-    // Listen to real-time events emitted by backend orderController
     socket.on('newOrder', (newOrder) => {
       playNewOrderSound();
       setOrders((prev) => [newOrder, ...prev.filter((o) => o._id !== newOrder._id)]);
@@ -169,7 +165,6 @@ function KitchenDisplay() {
     };
   }, [user, activeTab]);
 
-  // Fetch notifications (low-stock + recent orders)
   const fetchNotifications = async () => {
     try {
       const notifList = [];
@@ -200,7 +195,7 @@ function KitchenDisplay() {
             id,
             type: 'order',
             title: `New Order #${ord.orderNumber || ord._id?.slice(-4).toUpperCase()}`,
-            body: `${ord.items?.length || 0} items · Rs. ${amt != null ? Number(amt).toFixed(0) : '—'} · ${ord.status}`,
+            body: `${ord.items?.length || 0} items · Rs. ${amt != null ? Number(amt).toFixed(0) : '-'} · ${ord.status}`,
             time: ord.createdAt,
             read: readNotifIds.includes(id),
           });
@@ -218,7 +213,6 @@ function KitchenDisplay() {
     return () => clearInterval(interval);
   }, []);
 
-  // Close notification panel on outside click
   useEffect(() => {
     const handleClick = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
@@ -310,10 +304,8 @@ function KitchenDisplay() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 md:p-6 space-y-6">
-      {/* Top Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 md:px-6 shadow-xl">
         <div className="flex items-center gap-3">
-          {/* Hamburger Menu moved to LEFT side */}
           <ScreenNavPanel />
           <div>
             <div className="flex items-center gap-2">
@@ -331,7 +323,6 @@ function KitchenDisplay() {
         </div>
 
         <div className="flex items-center gap-3 self-end md:self-auto flex-wrap">
-          {/* Bell Notification Icon — BEFORE tab buttons */}
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setNotifOpen((p) => !p)}
@@ -410,7 +401,6 @@ function KitchenDisplay() {
             )}
           </div>
 
-          {/* Tab Selector */}
           <div className="flex items-center p-1 rounded-xl bg-neutral-950 border border-neutral-800">
             <button
               onClick={() => setActiveTab('live')}
@@ -460,7 +450,6 @@ function KitchenDisplay() {
         </div>
       </div>
 
-      {/* Main Content Area */}
       {activeTab === 'live' ? (
         loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -505,7 +494,6 @@ function KitchenDisplay() {
                     isUrgent ? 'border-rose-500/80 shadow-rose-900/20' : 'border-amber-500/30'
                   }`}
                 >
-                  {/* Card Top Banner */}
                   <div className={`p-4 border-b flex justify-between items-center ${
                     isUrgent ? 'bg-rose-500/10 border-rose-500/20' : 'bg-amber-500/10 border-amber-500/20'
                   }`}>
@@ -531,7 +519,6 @@ function KitchenDisplay() {
                     </div>
                   </div>
 
-                  {/* Order Kitchen Items List grouped by Round */}
                   <div className="p-4 flex-1 space-y-4 overflow-y-auto max-h-80">
                     {(() => {
                       const itemsByRound = (order.kitchenItems || []).reduce((acc, item) => {
@@ -584,7 +571,6 @@ function KitchenDisplay() {
                                     )}
                                   </div>
 
-                                  {/* Action Button */}
                                   <button
                                     onClick={() =>
                                       handleUpdateItemStatus(
@@ -698,7 +684,6 @@ function KitchenDisplay() {
               </div>
             )}
 
-            {/* Load More Pagination */}
             {historyOrders.length >= historyLimit && (
               <div className="mt-4 text-center border-t border-neutral-800 pt-4">
                 <button

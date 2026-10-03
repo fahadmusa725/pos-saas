@@ -1,18 +1,15 @@
 const Order = require('../models/Order');
 const Table = require('../models/Table');
 
-// Order number generate karne ka helper
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString().slice(-6);
   return `ORD-${timestamp}`;
 };
 
-// Helper function to validate stock levels for items with recipes
 const validateStockForItems = async (items, restaurantId) => {
   const MenuItem = require('../models/MenuItem');
   const InventoryItem = require('../models/InventoryItem');
 
-  // Aggregated required quantities per ingredient
   const requiredStock = {};
 
   for (const item of items) {
@@ -26,7 +23,6 @@ const validateStockForItems = async (items, restaurantId) => {
 
     // ONLY check stock for menu items that have a non-empty recipe
     if (menuItem && menuItem.recipe && menuItem.recipe.length > 0) {
-      // Find portion multiplier if a variant was selected
       let multiplier = 1;
       if (item.variant && menuItem.variants && menuItem.variants.length > 0) {
         const foundVariant = menuItem.variants.find((v) => v.name === item.variant);
@@ -47,7 +43,6 @@ const validateStockForItems = async (items, restaurantId) => {
     }
   }
 
-  // Check required stock against database currentStock
   for (const [invId, totalRequired] of Object.entries(requiredStock)) {
     const invItem = await InventoryItem.findOne({ _id: invId, restaurantId });
     if (invItem && invItem.currentStock < totalRequired) {
@@ -59,7 +54,6 @@ const validateStockForItems = async (items, restaurantId) => {
   }
 };
 
-// Helper function to auto-derive overall order status from item statuses
 const deriveOrderStatusFromItems = (order) => {
   if (!order.items || order.items.length === 0) return order.status;
 
@@ -90,7 +84,6 @@ exports.createOrder = async (req, res) => {
     // STRICT STOCK CHECK VALIDATION (only for items with recipes)
     await validateStockForItems(items, req.tenantId);
 
-    // Item-level discount bounds & Subtotal calculation
     let subtotal = 0;
     const processedItems = items.map((item) => {
       const baseItemPrice = Number(item.price);
@@ -187,7 +180,6 @@ exports.createOrder = async (req, res) => {
       createdBy: req.user._id,
     });
 
-    // Increment customer credit balance if paid on credit
     if (paymentMethod === 'credit' && customerId) {
       const Customer = require('../models/Customer');
       await Customer.findByIdAndUpdate(customerId, {
@@ -199,7 +191,6 @@ exports.createOrder = async (req, res) => {
       await Table.findByIdAndUpdate(tableId, { status: 'occupied' });
     }
 
-    // Recipe Inventory Deduction with Variant Multiplier Scaling & Auto-Deactivation
     try {
       const MenuItem = require('../models/MenuItem');
       const InventoryItem = require('../models/InventoryItem');
@@ -243,7 +234,6 @@ exports.createOrder = async (req, res) => {
         }
       }
 
-      // Auto-Deactivate menu items if any ingredient's stock drops to 0 or below
       if (depletedInventoryIds.size > 0) {
         const depletedArray = Array.from(depletedInventoryIds);
         const affectedMenuItems = await MenuItem.find({
@@ -283,7 +273,6 @@ exports.getOrders = async (req, res) => {
       filter.paymentStatus = req.query.paymentStatus;
     }
 
-    // Date filtering: date=today OR startDate/endDate
     if (req.query.date === 'today') {
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
@@ -403,7 +392,6 @@ exports.updateItemStatus = async (req, res) => {
 
     item.status = status;
 
-    // AUTO-SYNC overall order status based on updated item statuses
     const newDerivedStatus = deriveOrderStatusFromItems(order);
     order.status = newDerivedStatus;
 
@@ -461,12 +449,10 @@ exports.markAsPaid = async (req, res) => {
       newPayments = [{ method, amount: order.total }];
     }
 
-    // Check for Credit / Udhar payment method
     let creditAmountTotal = 0;
     const hasCreditPayment = newPayments.some((p) => p.method === 'credit');
 
     if (hasCreditPayment) {
-      // Must have linked customer
       const custId = order.customerId || req.body.customerId;
       if (!custId) {
         return res.status(400).json({
@@ -501,7 +487,6 @@ exports.markAsPaid = async (req, res) => {
       });
     }
 
-    // Increment customer creditBalance for credit payments
     if (creditAmountTotal > 0 && order.customerId) {
       const Customer = require('../models/Customer');
       await Customer.findByIdAndUpdate(order.customerId, {
@@ -509,7 +494,6 @@ exports.markAsPaid = async (req, res) => {
       });
     }
 
-    // Append to existing breakdown
     order.paymentBreakdown = order.paymentBreakdown || [];
     newPayments.forEach((p) => {
       order.paymentBreakdown.push({
@@ -519,7 +503,6 @@ exports.markAsPaid = async (req, res) => {
       });
     });
 
-    // Compute cash/card/online paid vs credit
     const realMoneyPaid = order.paymentBreakdown
       .filter((p) => p.method !== 'credit')
       .reduce((sum, p) => sum + p.amount, 0);
@@ -541,7 +524,6 @@ exports.markAsPaid = async (req, res) => {
 
       order.amountPaid = realMoneyPaid;
 
-      // Table Status Sync: Free occupied table upon order completion
       if (order.tableId) {
         await Table.findByIdAndUpdate(order.tableId, { status: 'available' });
       }
@@ -550,7 +532,6 @@ exports.markAsPaid = async (req, res) => {
       order.amountPaid = realMoneyPaid;
     }
 
-    // Set dominant payment method name
     if (order.paymentBreakdown.length > 1) {
       order.paymentMethod = 'split';
     } else if (order.paymentBreakdown.length === 1) {
@@ -559,7 +540,6 @@ exports.markAsPaid = async (req, res) => {
 
     await order.save();
 
-    // Real-time socket updates for KDS & Waiter views
     req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
     if (order.paymentStatus === 'paid' || order.status === 'completed') {
       req.io.to(req.tenantId.toString()).emit('orderCompleted', order);
@@ -593,10 +573,8 @@ exports.addItemsToOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cannot add items to a completed or paid order' });
     }
 
-    // STRICT STOCK CHECK VALIDATION for newly added items
     await validateStockForItems(items, req.tenantId);
 
-    // Calculate round number for running tab additions
     const maxExistingRound = (order.items || []).reduce((max, i) => Math.max(max, i.round || 1), 1);
     const nextRound = maxExistingRound + 1;
 
@@ -650,7 +628,6 @@ exports.addItemsToOrder = async (req, res) => {
 
     await order.save();
 
-    // Recipe Inventory Deduction for newly added items with Portion Multiplier & Auto-Deactivation
     try {
       const MenuItem = require('../models/MenuItem');
       const InventoryItem = require('../models/InventoryItem');
@@ -694,7 +671,6 @@ exports.addItemsToOrder = async (req, res) => {
         }
       }
 
-      // Auto-Deactivate menu items if any ingredient's stock drops to 0 or below
       if (depletedInventoryIds.size > 0) {
         const depletedArray = Array.from(depletedInventoryIds);
         const affectedMenuItems = await MenuItem.find({

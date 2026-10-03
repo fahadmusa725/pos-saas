@@ -41,7 +41,6 @@ function RequestDemo() {
 
   return (
     <div className="min-h-screen bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors">
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div
@@ -71,7 +70,6 @@ function RequestDemo() {
         </div>
       </header>
 
-      {/* Content */}
       <section className="max-w-2xl mx-auto px-4 sm:px-6 py-16">
         <div className="text-center mb-10">
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Request a Demo</h1>

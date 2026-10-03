@@ -20,7 +20,6 @@ function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Form State matching screenshot inputs
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -91,7 +90,6 @@ function Settings() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto pb-12">
-      {/* Top Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
@@ -113,7 +111,6 @@ function Settings() {
         </button>
       </div>
 
-      {/* ── 1. GENERAL CARD ── */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-xs">
         <div className="px-6 py-3.5 bg-neutral-50 dark:bg-neutral-950/80 border-b border-neutral-200 dark:border-neutral-800">
           <h2 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">
@@ -122,7 +119,6 @@ function Settings() {
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Restaurant Name */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
               <span className="text-base"></span> Restaurant Name
@@ -137,7 +133,6 @@ function Settings() {
             />
           </div>
 
-          {/* Address */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
               <span className="text-base"></span> Address
@@ -151,7 +146,6 @@ function Settings() {
             />
           </div>
 
-          {/* Phone Number */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
               <span className="text-base"></span> Phone Number
@@ -167,7 +161,6 @@ function Settings() {
         </div>
       </div>
 
-      {/* ── 2. BILLING CARD ── */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-xs">
         <div className="px-6 py-3.5 bg-neutral-50 dark:bg-neutral-950/80 border-b border-neutral-200 dark:border-neutral-800">
           <h2 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">
@@ -176,7 +169,6 @@ function Settings() {
         </div>
 
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Tax Rate (%) */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
               <span className="text-base"></span> Tax Rate (%)
@@ -193,7 +185,6 @@ function Settings() {
             />
           </div>
 
-          {/* Currency Symbol */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
               <span className="text-base"></span> Currency Symbol
@@ -209,7 +200,6 @@ function Settings() {
         </div>
       </div>
 
-      {/* ── 3. RECEIPTS CARD ── */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-xs">
         <div className="px-6 py-3.5 bg-neutral-50 dark:bg-neutral-950/80 border-b border-neutral-200 dark:border-neutral-800">
           <h2 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">
@@ -218,7 +208,6 @@ function Settings() {
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Receipt Footer Message */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
               <span className="text-base"></span> Receipt Footer Message
@@ -232,7 +221,6 @@ function Settings() {
             />
           </div>
 
-          {/* Show Barcode Toggle */}
           <div className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl">
             <div className="space-y-0.5">
               <p className="text-xs font-bold text-neutral-900 dark:text-white flex items-center gap-2">
@@ -256,7 +244,6 @@ function Settings() {
         </div>
       </div>
 
-      {/* ── 4. KITCHEN & KDS PREFERENCES CARD ── */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-xs">
         <div className="px-6 py-3.5 bg-neutral-50 dark:bg-neutral-950/80 border-b border-neutral-200 dark:border-neutral-800">
           <h2 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">
@@ -265,7 +252,6 @@ function Settings() {
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Sound Alerts Toggle */}
           <div className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl">
             <div className="space-y-0.5">
               <p className="text-xs font-bold text-neutral-900 dark:text-white flex items-center gap-2">
@@ -287,7 +273,6 @@ function Settings() {
             </label>
           </div>
 
-          {/* Urgent Minutes Threshold */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-500" /> Urgent Order Threshold (Minutes)
@@ -305,7 +290,6 @@ function Settings() {
         </div>
       </div>
 
-      {/* Save Button (Bottom Bar) */}
       <div className="flex justify-end pt-2">
         <button
           type="submit"

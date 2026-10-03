@@ -23,7 +23,6 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Customer selection state inside modal
   const initialCustomerObj = typeof order.customerId === 'object' ? order.customerId : null;
   const initialCustId = initialCustomerObj?._id || (typeof order.customerId === 'string' ? order.customerId : '');
 
@@ -146,12 +145,11 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto">
 
-        {/* Modal Header */}
         <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 pb-3">
           <div>
             <h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-amber-500" />
-              Process Payment — #{order.orderNumber}
+              Process Payment: #{order.orderNumber}
             </h2>
             <p className="text-xs text-neutral-500">Order Subtotal: Rs. {order.total}</p>
           </div>
@@ -221,7 +219,6 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
           )}
         </div>
 
-        {/* Coupon Code Input */}
         <div className="p-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl space-y-2">
           <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
             Have a Promo Coupon?
@@ -259,7 +256,6 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
           )}
         </div>
 
-        {/* Summary Breakdown */}
         <div className="p-4 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl space-y-1.5 text-sm">
           <div className="flex justify-between text-neutral-600 dark:text-neutral-400 text-xs">
             <span>Order Subtotal</span>
@@ -278,7 +274,6 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Payment Methods Breakdown */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <label className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
@@ -330,7 +325,6 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
             ))}
           </div>
 
-          {/* Quick Put Remaining on Udhar Button */}
           {remaining > 0 && isCreditAllowed && (
             <button
               type="button"
@@ -341,7 +335,6 @@ function CheckoutModal({ order, onClose, onSubmit, userRole }) {
             </button>
           )}
 
-          {/* Balance / Change Calculation */}
           <div className="p-3 bg-neutral-100 dark:bg-neutral-950 rounded-xl flex justify-between items-center text-xs font-bold">
             <span>Entered: Rs. {totalEntered}</span>
             {remaining > 0 ? (

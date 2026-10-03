@@ -102,7 +102,7 @@ function DemoRequests() {
                       </a>
                     </td>
                     <td className="px-5 py-3.5 text-neutral-500 dark:text-neutral-400 max-w-xs truncate" title={r.message}>
-                      {r.message || '—'}
+                      {r.message || '-'}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${STATUS_STYLES[r.status] || STATUS_STYLES.new}`}>

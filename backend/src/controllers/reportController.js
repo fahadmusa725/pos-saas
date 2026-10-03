@@ -5,7 +5,6 @@ const PurchaseOrder = require('../models/PurchaseOrder');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 
-// Helper to construct tenant & date range match stage
 const buildDateMatch = (req, includePaidOnly = true, dateField = 'createdAt') => {
   const match = {};
   if (req.tenantId) {
@@ -178,7 +177,7 @@ const getOrderTypeBreakdown = async (req, res) => {
   }
 };
 
-// @desc    Get Payment Method Breakdown — uses $unwind on paymentBreakdown for split-payment accuracy
+// @desc    Get Payment Method Breakdown. Uses $unwind on paymentBreakdown for split-payment accuracy
 // @route   GET /api/reports/payment-breakdown?startDate=X&endDate=Y
 // @access  Private (restaurant-admin)
 const getPaymentBreakdown = async (req, res) => {
@@ -186,7 +185,7 @@ const getPaymentBreakdown = async (req, res) => {
     const matchStage = buildDateMatch(req, true, 'createdAt');
 
     // NOTE: $unwind paymentBreakdown array ensures split-payment orders
-    // (e.g. part cash + part card) are counted accurately per method —
+    // (e.g. part cash + part card) are counted accurately per method,
     // not lumped under the top-level paymentMethod field.
     const breakdown = await Order.aggregate([
       { $match: matchStage },
@@ -254,10 +253,9 @@ const getProfitLossReport = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NEW ENDPOINTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-// @desc    Financial Overview — full ledger for Tab 1 & Tab 2
+// @desc    Financial Overview: full ledger for Tab 1 & Tab 2
 // @route   GET /api/reports/financial-overview?startDate=X&endDate=Y
 // @access  Private (restaurant-admin)
 const getFinancialOverview = async (req, res) => {
@@ -269,7 +267,6 @@ const getFinancialOverview = async (req, res) => {
       if (req.tenantId) restaurantId = new mongoose.Types.ObjectId(req.tenantId);
     } catch (e) {}
 
-    // Total sales revenue + order count
     const salesAgg = await Order.aggregate([
       { $match: orderMatch },
       {
@@ -281,7 +278,6 @@ const getFinancialOverview = async (req, res) => {
       },
     ]);
 
-    // Payment-method breakdown via $unwind — split-payment accurate
     const paymentAgg = await Order.aggregate([
       { $match: orderMatch },
       { $unwind: '$paymentBreakdown' },
@@ -301,7 +297,6 @@ const getFinancialOverview = async (req, res) => {
     const creditSales = paymentMap['credit'] || 0;
     const onlineSales = paymentMap['online'] || 0;
 
-    // Total expenses
     const expenseAgg = await Expense.aggregate([
       { $match: expenseMatch },
       { $group: { _id: null, totalExpenses: { $sum: '$amount' } } },
@@ -329,7 +324,6 @@ const getFinancialOverview = async (req, res) => {
       },
     ]);
 
-    // Daily revenue trend for chart
     const dailyTrend = await Order.aggregate([
       { $match: orderMatch },
       {
@@ -355,7 +349,7 @@ const getFinancialOverview = async (req, res) => {
       success: true,
       totalSalesRevenue,
       totalOrders,
-      totalCashSales: cashSales,  // "Total Cash Sales" — cash-method only, not drawer count
+      totalCashSales: cashSales,  // "Total Cash Sales": cash-method only, not drawer count
       cardSales,
       creditSales,
       onlineSales,
@@ -371,7 +365,7 @@ const getFinancialOverview = async (req, res) => {
   }
 };
 
-// @desc    Category Sales Report — uses MenuItem.categoryId ref
+// @desc    Category Sales Report. Uses MenuItem.categoryId ref
 // @route   GET /api/reports/category-sales?startDate=X&endDate=Y
 // @access  Private (restaurant-admin)
 const getCategorySalesReport = async (req, res) => {
@@ -439,7 +433,7 @@ const getCategorySalesReport = async (req, res) => {
   }
 };
 
-// @desc    Peak Hours Report — 24-hour order distribution
+// @desc    Peak Hours Report: 24-hour order distribution
 // @route   GET /api/reports/peak-hours?startDate=X&endDate=Y
 // @access  Private (restaurant-admin)
 const getPeakHoursReport = async (req, res) => {
@@ -492,7 +486,6 @@ const getStaffPerformanceReport = async (req, res) => {
       staffMap[staffKey].totalSalesGenerated += (Number(o.total) || 0);
     });
 
-    // Populate user info
     const users = await User.find({}, { name: 1, email: 1, role: 1 }).lean();
     const userLookup = {};
     users.forEach(u => { userLookup[u._id.toString()] = u; });
@@ -521,7 +514,7 @@ const getStaffPerformanceReport = async (req, res) => {
   }
 };
 
-// @desc    Customer Report — Top spenders + outstanding credit (udhar)
+// @desc    Customer Report: Top spenders + outstanding credit (udhar)
 // @route   GET /api/reports/customer-report?startDate=X&endDate=Y
 // @access  Private (restaurant-admin)
 const getCustomerReport = async (req, res) => {
@@ -560,7 +553,6 @@ const getCustomerReport = async (req, res) => {
     });
     topSpenders.sort((a, b) => b.totalSpent - a.totalSpent);
 
-    // Customers with outstanding credit balance (udhar)
     const outstandingCredit = customers
       .filter(c => Number(c.creditBalance) > 0)
       .map(c => ({ _id: c._id, name: c.name, phone: c.phone, creditBalance: c.creditBalance }))
@@ -568,7 +560,6 @@ const getCustomerReport = async (req, res) => {
 
     const totalOutstanding = customers.reduce((sum, c) => sum + (Number(c.creditBalance) || 0), 0);
 
-    // Calculate credit given out from orders
     let totalCreditGiven = 0;
     orders.forEach(o => {
       if (Array.isArray(o.paymentBreakdown)) {
@@ -594,7 +585,7 @@ const getCustomerReport = async (req, res) => {
   }
 };
 
-// @desc    Supplier Report — Purchase volume + outstanding per supplier
+// @desc    Supplier Report: Purchase volume + outstanding per supplier
 // @route   GET /api/reports/supplier-report?startDate=X&endDate=Y
 // @access  Private (restaurant-admin)
 const getSupplierReport = async (req, res) => {

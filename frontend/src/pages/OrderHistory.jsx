@@ -39,14 +39,12 @@ function OrderHistory() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Filters
   const [statusFilter, setStatusFilter]   = useState('all');
   const [typeFilter, setTypeFilter]       = useState('all');
   const [payFilter, setPayFilter]         = useState('all');
   const [dateFilter, setDateFilter]       = useState('');
   const [searchQuery, setSearchQuery]     = useState('');
 
-  // Modals
   const [checkoutOrder, setCheckoutOrder]   = useState(null);
   const [receiptOrder, setReceiptOrder]     = useState(null);
   const [restaurantName, setRestaurantName] = useState('');
@@ -96,7 +94,6 @@ function OrderHistory() {
     toast.success('Payment recorded!');
   };
 
-  // Filtered orders
   const filteredOrders = orders.filter((o) => {
     if (statusFilter !== 'all' && o.status !== statusFilter) return false;
     if (typeFilter !== 'all' && o.orderType !== typeFilter) return false;
@@ -115,7 +112,6 @@ function OrderHistory() {
     return true;
   });
 
-  // Stats
   const stats = {
     total:     orders.length,
     completed: orders.filter((o) => o.status === 'completed').length,
@@ -136,7 +132,6 @@ function OrderHistory() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight flex items-center gap-3">
@@ -159,7 +154,6 @@ function OrderHistory() {
         </button>
       </div>
 
-      {/* Stats Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total Orders', value: stats.total, color: 'text-neutral-900 dark:text-white' },
@@ -174,12 +168,10 @@ function OrderHistory() {
         ))}
       </div>
 
-      {/* Filters Row */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 shadow-xs">
         <div className="flex items-center gap-2 flex-wrap">
           <Filter className="w-4 h-4 text-neutral-400 flex-shrink-0" />
 
-          {/* Status Filter */}
           <div className="relative">
             <select
               value={statusFilter}
@@ -197,7 +189,6 @@ function OrderHistory() {
             <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-2.5 pointer-events-none" />
           </div>
 
-          {/* Type Filter */}
           <div className="relative">
             <select
               value={typeFilter}
@@ -212,7 +203,6 @@ function OrderHistory() {
             <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-2.5 pointer-events-none" />
           </div>
 
-          {/* Payment Filter */}
           <div className="relative">
             <select
               value={payFilter}
@@ -227,7 +217,6 @@ function OrderHistory() {
             <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-2.5 pointer-events-none" />
           </div>
 
-          {/* Date Filter */}
           <input
             type="date"
             value={dateFilter}
@@ -235,7 +224,6 @@ function OrderHistory() {
             className="px-3 py-2 text-xs font-semibold bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
           />
 
-          {/* Search */}
           <div className="relative ml-auto">
             <input
               type="text"
@@ -247,14 +235,12 @@ function OrderHistory() {
             <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-2.5" />
           </div>
 
-          {/* Result count */}
           <span className="text-xs font-semibold text-neutral-400 whitespace-nowrap">
             {filteredOrders.length} of {orders.length}
           </span>
         </div>
       </div>
 
-      {/* Orders Table */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
@@ -289,17 +275,14 @@ function OrderHistory() {
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
                 {filteredOrders.map((order) => (
                   <tr key={order._id} className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors">
-                    {/* Order # */}
                     <td className="px-3 py-3">
                       <span className="font-mono font-bold text-amber-500">#{order.orderNumber}</span>
                     </td>
 
-                    {/* Date */}
                     <td className="px-3 py-3 text-neutral-500 dark:text-neutral-400 whitespace-nowrap text-[11px]">
                       {formatDate(order.createdAt)}
                     </td>
 
-                    {/* Type & Table */}
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[10px] font-bold uppercase text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">
@@ -311,24 +294,20 @@ function OrderHistory() {
                       </div>
                     </td>
 
-                    {/* Customer */}
                     <td className="px-3 py-3 text-neutral-700 dark:text-neutral-300 font-medium">
                       {order.customerId ? order.customerId.name : <span className="text-neutral-500 italic text-[11px]">Walk-in</span>}
                     </td>
 
-                    {/* Items Summary */}
                     <td className="px-3 py-3 max-w-[180px]">
                       <p className="text-[11px] text-neutral-400 truncate" title={order.items?.map(i => `${i.quantity}x ${i.name}`).join(', ')}>
                         {formatItems(order.items)}
                       </p>
                     </td>
 
-                    {/* Total */}
                     <td className="px-3 py-3 font-extrabold text-neutral-900 dark:text-white whitespace-nowrap">
                       Rs. {(order.total || 0).toLocaleString()}
                     </td>
 
-                    {/* Payment Status */}
                     <td className="px-3 py-3">
                       <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize ${PAY_STATUS_COLORS[order.paymentStatus] || ''}`}>
                         {PAY_STATUS_LABELS[order.paymentStatus] || order.paymentStatus}
@@ -347,12 +326,10 @@ function OrderHistory() {
                           onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer focus:outline-none bg-transparent ${STATUS_COLORS[order.status] || ''}`}
                         >
-                          {/* Current Status */}
                           <option value={order.status} className="bg-neutral-900 text-white" disabled>
                             {order.status.toUpperCase()} (Current)
                           </option>
 
-                          {/* Forward Transitions */}
                           {order.status === 'pending' && (
                             <>
                               <option value="confirmed" className="bg-neutral-900 text-white">Confirmed</option>
@@ -386,7 +363,6 @@ function OrderHistory() {
                       )}
                     </td>
 
-                    {/* Actions */}
                     <td className="px-3 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {order.paymentStatus === 'paid' ? (
@@ -417,7 +393,6 @@ function OrderHistory() {
         )}
       </div>
 
-      {/* Checkout Modal */}
       {checkoutOrder && (
         <CheckoutModal
           order={checkoutOrder}
@@ -427,7 +402,6 @@ function OrderHistory() {
         />
       )}
 
-      {/* Receipt Modal */}
       {receiptOrder && (
         <ReceiptModal
           order={receiptOrder}

@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Tailwind v4: class-based dark mode — adds 'dark:' variant when .dark is on <html> */
+/* Tailwind v4: class-based dark mode. Adds 'dark:' variant when .dark is on <html> */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ========== Global Typography ========== */

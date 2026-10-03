@@ -82,7 +82,6 @@ const updateInventoryItem = async (req, res) => {
 
     await item.save();
 
-    // Auto sync menu items availability based on ingredient stock change
     try {
       const MenuItem = require('../models/MenuItem');
       const InventoryItem = require('../models/InventoryItem');

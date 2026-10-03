@@ -29,7 +29,7 @@ const FEATURES = [
   {
     icon: CreditCard,
     title: 'Multi-Payment Support',
-    desc: 'Cash, Card, Split payments and Customer Credit — all handled at checkout.',
+    desc: 'Cash, Card, Split payments and Customer Credit, all handled at checkout.',
   },
   {
     icon: BarChart3,
@@ -87,7 +87,6 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors">
-      {/* Nav */}
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -114,7 +113,6 @@ function Landing() {
         </div>
       </header>
 
-      {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-20 text-center">
         <p className="text-xs font-bold tracking-wider text-amber-600 dark:text-amber-400 uppercase mb-4">
           The all-in-one restaurant OS
@@ -123,7 +121,7 @@ function Landing() {
           Run your restaurant on <span className="text-amber-500">DineFlow</span>
         </h1>
         <p className="mt-5 text-base sm:text-lg text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">
-          From POS to kitchen to inventory and staff — one dark-themed platform that keeps every part of
+          From POS to kitchen to inventory and staff, one dark-themed platform that keeps every part of
           your restaurant in sync, in real time.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -142,7 +140,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* Features */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
         <div className="text-center mb-12">
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Everything your restaurant needs</h2>
@@ -166,14 +163,12 @@ function Landing() {
         </div>
       </section>
 
-      {/* Pricing */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
         <div className="text-center mb-12">
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Simple, honest pricing</h2>
           <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">Pick the plan that matches how you run service.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-          {/* Basic */}
           <div className="p-7 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex flex-col">
             <h3 className="text-lg font-extrabold">Basic</h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Perfect for Takeaway & Delivery</p>
@@ -193,7 +188,6 @@ function Landing() {
             </button>
           </div>
 
-          {/* Pro (featured) */}
           <div className="relative p-7 rounded-2xl bg-white dark:bg-neutral-900 border-2 border-amber-500 flex flex-col shadow-xl shadow-amber-500/10">
             <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-amber-500 text-neutral-950 text-[10px] font-extrabold uppercase tracking-wide whitespace-nowrap">
               Most Popular
@@ -221,7 +215,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* Footer CTA */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
         <div className="rounded-3xl bg-neutral-900 dark:bg-neutral-900 border border-neutral-800 px-6 sm:px-12 py-14 text-center">
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
@@ -239,7 +232,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-neutral-200 dark:border-neutral-800">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-400">
           <div className="flex items-center gap-2 font-bold text-neutral-700 dark:text-neutral-300">

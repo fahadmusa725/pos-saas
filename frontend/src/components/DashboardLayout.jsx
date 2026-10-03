@@ -60,7 +60,6 @@ function DashboardLayout() {
   const [restaurantName, setRestaurantName] = useState('');
   const [restaurantPlan, setRestaurantPlan] = useState('basic');
 
-  // Notification state
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -78,7 +77,6 @@ function DashboardLayout() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch live restaurant info from backend on mount
   useEffect(() => {
     if (user) {
       api.get('/auth/me/restaurant')
@@ -92,13 +90,11 @@ function DashboardLayout() {
     }
   }, [user]);
 
-  // Fetch notifications (low-stock inventory + recent orders)
   const fetchNotifications = async () => {
     try {
       const notifList = [];
       const readNotifIds = JSON.parse(localStorage.getItem('read_notifications') || '[]');
 
-      // Low-stock inventory items
       try {
         const invRes = await api.get('/inventory');
         (invRes.data?.data || []).forEach((item) => {
@@ -117,7 +113,6 @@ function DashboardLayout() {
         });
       } catch (_) {}
 
-      // Recent orders (last 5)
       try {
         const ordRes = await api.get('/orders');
         (ordRes.data?.data || []).slice(0, 5).forEach((ord) => {
@@ -127,7 +122,7 @@ function DashboardLayout() {
             id,
             type: 'order',
             title: `New Order #${ord.orderNumber || ord._id?.slice(-4).toUpperCase()}`,
-            body: `${ord.items?.length || 0} items · Rs. ${amount != null ? Number(amount).toFixed(0) : '—'} · ${ord.status}`,
+            body: `${ord.items?.length || 0} items · Rs. ${amount != null ? Number(amount).toFixed(0) : '-'} · ${ord.status}`,
             time: ord.createdAt,
             read: readNotifIds.includes(id),
           });
@@ -146,7 +141,6 @@ function DashboardLayout() {
     return () => clearInterval(interval);
   }, []);
 
-  // Close notification dropdown on outside click
   useEffect(() => {
     const handleClick = (e) => {
       const insideDesktop = notifRef.current && notifRef.current.contains(e.target);
@@ -200,14 +194,12 @@ function DashboardLayout() {
   const isAllowed = (module) => {
     if (user?.role === 'super-admin') return true;
 
-    // 1. Plan-level check: Is this module included in the tenant's subscription plan?
     const currentPlan = restaurantPlan || 'basic';
     const planModules = PLAN_MODULES[currentPlan] || PLAN_MODULES['basic'];
     if (!planModules.includes(module.id)) {
       return false;
     }
 
-    // 2. Role/Permission-level check
     if (user?.role === 'restaurant-admin') return true;
     const userPermissions = user?.permissions || [];
     return userPermissions.includes(module.id);
@@ -227,7 +219,6 @@ function DashboardLayout() {
 
   const renderNotifDropdown = (positionClass) => (
     <div className={`absolute ${positionClass} top-full mt-2 w-[calc(100vw-2rem)] max-w-80 sm:w-80 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-2xl z-50 overflow-hidden`}>
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Bell className="w-4 h-4 text-amber-500 shrink-0" />
@@ -246,7 +237,6 @@ function DashboardLayout() {
         </button>
       </div>
 
-      {/* Category Tabs */}
       <div className="flex items-center gap-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
         {[
           { label: `All (${notifications.length})`, key: 'all' },
@@ -267,7 +257,6 @@ function DashboardLayout() {
         ))}
       </div>
 
-      {/* Notification List */}
       <div className="max-h-72 overflow-y-auto">
         {visibleNotifs.length === 0 ? (
           <div className="py-8 text-center text-neutral-500 text-sm">
@@ -284,7 +273,6 @@ function DashboardLayout() {
                   : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
               }`}
             >
-              {/* Icon */}
               <div className={`p-1.5 rounded-lg flex-shrink-0 mt-0.5 ${
                 notif.type === 'stock'
                   ? 'bg-rose-500/10 text-rose-500 dark:text-rose-400'
@@ -295,7 +283,6 @@ function DashboardLayout() {
                   : <ShoppingBag className="w-4 h-4" />
                 }
               </div>
-              {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-tight">{notif.title}</p>
@@ -315,7 +302,6 @@ function DashboardLayout() {
                   {notif.type === 'stock' ? 'Click to inspect stock in Inventory →' : 'View Orders →'}
                 </button>
               </div>
-              {/* Dismiss */}
               <button
                 onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
                 className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 transition opacity-0 group-hover:opacity-100 flex-shrink-0"
@@ -332,7 +318,6 @@ function DashboardLayout() {
 
   return (
     <div className="min-h-screen flex bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors duration-200 relative">
-      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-xs z-20 md:hidden"
@@ -340,7 +325,6 @@ function DashboardLayout() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`
           fixed md:static inset-y-0 left-0 z-30
@@ -349,7 +333,6 @@ function DashboardLayout() {
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        {/* Branding & Header */}
         <div className="p-5 border-b border-neutral-200 dark:border-neutral-800 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 font-bold shadow-xs">
@@ -365,9 +348,8 @@ function DashboardLayout() {
             </div>
           </div>
 
-          {/* Bell + Theme toggle grouped */}
           <div className="flex items-center gap-1.5">
-            {/* Notification Bell (desktop only — mobile uses the header bell below) */}
+            {/* Notification Bell (desktop only; mobile uses the header bell below) */}
             <div className="relative hidden md:block" ref={notifRef}>
               <button
                 onClick={() => setNotifOpen((p) => !p)}
@@ -382,11 +364,9 @@ function DashboardLayout() {
                 )}
               </button>
 
-              {/* Notification Dropdown (desktop sidebar bell) */}
               {notifOpen && renderNotifDropdown('left-0 right-auto')}
             </div>
 
-            {/* Theme toggle */}
             <button
               onClick={toggleTheme}
               title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
@@ -397,7 +377,6 @@ function DashboardLayout() {
           </div>
         </div>
 
-        {/* User Info Card */}
         <div className="px-5 py-3 border-b border-neutral-100 dark:border-neutral-800/60 bg-neutral-50/50 dark:bg-neutral-950/40">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold text-amber-500 uppercase tracking-wide truncate">
@@ -409,7 +388,6 @@ function DashboardLayout() {
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {APP_MODULES.filter(isAllowed).map((item) => {
             const Icon = MODULE_ICONS[item.id] || LayoutDashboard;
@@ -433,7 +411,6 @@ function DashboardLayout() {
           })}
         </nav>
 
-        {/* Logout */}
         <div className="p-3 border-t border-neutral-200 dark:border-neutral-800 flex-shrink-0">
           <button
             onClick={handleLogout}
@@ -445,9 +422,7 @@ function DashboardLayout() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header bar (mobile) */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 sticky top-0 z-10 flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
@@ -460,7 +435,6 @@ function DashboardLayout() {
             <span className="text-sm font-extrabold text-neutral-900 dark:text-white">DineFlow</span>
           </div>
           <div className="flex items-center gap-2">
-            {/* Mobile Bell */}
             <div className="relative" ref={mobileNotifRef}>
               <button
                 onClick={() => setNotifOpen((p) => !p)}
@@ -484,7 +458,6 @@ function DashboardLayout() {
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
           <Outlet />
         </main>

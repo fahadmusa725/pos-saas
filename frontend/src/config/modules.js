@@ -12,7 +12,7 @@ export const APP_MODULES = [
   { id: 'kds', name: 'Kitchen Display', path: '/kds' },
   { id: 'waiter-screen', name: 'Waiter Screen', path: '/waiter' },
   { id: 'customers', name: 'Customers', path: '/dashboard/customers' },
-  // suppliers: adminOnly — hidden from sidebar for non-admin staff even if in permissions array
+  // suppliers: adminOnly. Hidden from sidebar for non-admin staff even if in permissions array
   { id: 'suppliers', name: 'Suppliers', path: '/dashboard/suppliers', adminOnly: true },
   { id: 'inventory', name: 'Inventory', path: '/dashboard/inventory', adminOnly: true },
   { id: 'purchase-orders', name: 'Purchase Orders', path: '/dashboard/purchase-orders', adminOnly: true },
@@ -23,11 +23,11 @@ export const APP_MODULES = [
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS = {
-  // cashier: gets 'customers' access — needed for phone lookup during order creation
+  // cashier: gets 'customers' access, needed for phone lookup during order creation
   cashier: ['orders', 'order-history', 'tables', 'customers'],
   waiter: ['orders', 'order-history', 'tables', 'kds', 'waiter-screen'],
   kitchen: ['kds'],
-  // manager: broad access — all operational modules; create/delete staff restricted at API level
+  // manager: broad access to all operational modules. Create/delete staff is restricted at API level
   manager: APP_MODULES.filter((m) => m.id !== 'staff').map((m) => m.id),
   'restaurant-admin': APP_MODULES.map((m) => m.id),
 };

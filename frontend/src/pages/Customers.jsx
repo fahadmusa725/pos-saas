@@ -24,15 +24,12 @@ function Customers() {
   const [editingId, setEditingId]       = useState(null);
   const [form, setForm]                 = useState(EMPTY_FORM);
 
-  // Settlement modal state
   const [settleCustomer, setSettleCustomer] = useState(null);
   const [settleAmount, setSettleAmount]     = useState('');
   const [settling, setSettling]             = useState(false);
 
-  // Order history modal
   const [historyCustomer, setHistoryCustomer] = useState(null);
 
-  // Delete confirm
   const [deleteId, setDeleteId] = useState(null);
 
   const fetchCustomers = useCallback(async (isManualRefresh = false) => {
@@ -155,7 +152,6 @@ function Customers() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2">
@@ -176,7 +172,6 @@ function Customers() {
         </div>
       </div>
 
-      {/* Search Input */}
       <div className="relative max-w-md">
         <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
         <input
@@ -188,7 +183,6 @@ function Customers() {
         />
       </div>
 
-      {/* Customers Table */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
@@ -292,7 +286,6 @@ function Customers() {
         )}
       </div>
 
-      {/* Add / Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -363,7 +356,6 @@ function Customers() {
         </div>
       )}
 
-      {/* Credit Settlement Modal */}
       {settleCustomer && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -423,7 +415,6 @@ function Customers() {
         </div>
       )}
 
-      {/* Customer History Modal */}
       <CustomerHistoryModal
         customer={historyCustomer}
         onClose={() => setHistoryCustomer(null)}

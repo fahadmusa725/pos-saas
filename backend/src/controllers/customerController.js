@@ -64,7 +64,7 @@ const getCustomers = async (req, res) => {
 // @desc    Search customer by phone number (partial match)
 // @route   GET /api/customers/search?phone=XXX
 // @access  Private (restaurant-admin, cashier)
-// SECURITY: req.tenantId filter is MANDATORY — prevents cross-restaurant data leak
+// SECURITY: req.tenantId filter is MANDATORY. It prevents cross-restaurant data leaks
 const searchCustomerByPhone = async (req, res) => {
   try {
     const { phone } = req.query;
@@ -73,7 +73,7 @@ const searchCustomerByPhone = async (req, res) => {
       return res.status(400).json({ success: false, message: 'At least 3 characters required for phone search' });
     }
 
-    // Always scoped to req.tenantId — a cashier from Restaurant A can NEVER
+    // Always scoped to req.tenantId. A cashier from Restaurant A can NEVER
     // see customers of Restaurant B, even via direct API call.
     const customers = await Customer.find({
       restaurantId: req.tenantId,       // ← TENANT ISOLATION ENFORCED
@@ -97,7 +97,6 @@ const createCustomer = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name and phone are required' });
     }
 
-    // Check duplicate phone within same restaurant
     const existing = await Customer.findOne({ restaurantId: req.tenantId, phone: phone.trim() });
     if (existing) {
       return res.status(400).json({
@@ -137,7 +136,6 @@ const updateCustomer = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Customer not found' });
     }
 
-    // Check if new phone conflicts with another customer in same restaurant
     if (phone && phone.trim() !== customer.phone) {
       const conflict = await Customer.findOne({ restaurantId: req.tenantId, phone: phone.trim() });
       if (conflict) {
@@ -149,7 +147,7 @@ const updateCustomer = async (req, res) => {
     if (phone !== undefined)         customer.phone         = phone.trim();
     if (email !== undefined)         customer.email         = email.trim();
     if (address !== undefined)       customer.address       = address.trim();
-    // loyaltyPoints: manual edit only — no auto logic
+    // loyaltyPoints: manual edit only. No auto logic
     if (loyaltyPoints !== undefined) customer.loyaltyPoints = Number(loyaltyPoints);
 
     await customer.save();
@@ -235,7 +233,6 @@ const settleCustomerCredit = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Customer has no outstanding credit balance' });
     }
 
-    // Overpayment Guard
     if (settleAmount > currentCredit) {
       return res.status(400).json({
         success: false,

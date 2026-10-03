@@ -58,7 +58,6 @@ exports.getMenuItems = async (req, res) => {
       .populate('recipe.inventoryItemId', 'name unit currentStock reorderLevel')
       .sort('displayOrder');
 
-    // On-the-fly stock availability check & auto-sync
     const updatedItems = await Promise.all(
       menuItems.map(async (item) => {
         if (item.recipe && item.recipe.length > 0) {
@@ -67,7 +66,6 @@ exports.getMenuItems = async (req, res) => {
           for (const ing of item.recipe) {
             const inv = ing.inventoryItemId;
             if (!inv) continue;
-            // If inv is populated object
             const stock = typeof inv === 'object' ? inv.currentStock : 0;
             if (stock <= 0) {
               shouldBeAvailable = false;
@@ -75,7 +73,6 @@ exports.getMenuItems = async (req, res) => {
             }
           }
 
-          // If stock is depleted, force item unavailable
           if (!shouldBeAvailable && item.isAvailable) {
             item.isAvailable = false;
             await MenuItem.updateOne({ _id: item._id }, { isAvailable: false });

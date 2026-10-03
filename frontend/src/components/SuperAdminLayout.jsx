@@ -44,7 +44,6 @@ function SuperAdminLayout() {
 
   return (
     <div className="min-h-screen flex bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors duration-200 relative">
-      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-xs z-20 md:hidden"
@@ -52,7 +51,6 @@ function SuperAdminLayout() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`
           fixed md:static inset-y-0 left-0 z-30
@@ -61,7 +59,6 @@ function SuperAdminLayout() {
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        {/* Header / Branding */}
         <div className="p-5 border-b border-neutral-200 dark:border-neutral-800 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 font-bold shadow-xs">
@@ -86,7 +83,6 @@ function SuperAdminLayout() {
           </button>
         </div>
 
-        {/* User Info Card */}
         <div className="px-5 py-3 border-b border-neutral-100 dark:border-neutral-800/60 bg-neutral-50/50 dark:bg-neutral-950/40">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 truncate">
@@ -98,7 +94,6 @@ function SuperAdminLayout() {
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -127,7 +122,6 @@ function SuperAdminLayout() {
           })}
         </nav>
 
-        {/* Logout Footer */}
         <div className="p-3 border-t border-neutral-200 dark:border-neutral-800 flex-shrink-0">
           <button
             onClick={handleLogout}
@@ -139,9 +133,7 @@ function SuperAdminLayout() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile Header */}
         <header className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
           <div className="flex items-center gap-3">
             <button

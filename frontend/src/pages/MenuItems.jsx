@@ -60,11 +60,9 @@ function MenuItems() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // Filter & Search State
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -105,7 +103,7 @@ function MenuItems() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_IMAGE_BYTES) {
-      toast.error('Image too large — please choose a file under 2 MB');
+      toast.error('Image too large. Please choose a file under 2 MB');
       e.target.value = '';
       return;
     }
@@ -182,7 +180,6 @@ function MenuItems() {
 
   const toggleAvailability = async (item) => {
     const newStatus = !item.isAvailable;
-    // Optimistic UI update
     setMenuItems((prev) =>
       prev.map((i) => (i._id === item._id ? { ...i, isAvailable: newStatus } : i))
     );
@@ -198,7 +195,6 @@ function MenuItems() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Frontend recipe quantity validation
     if (form.recipe && form.recipe.length > 0) {
       for (const ing of form.recipe) {
         if (ing.inventoryItemId || ing.quantityUsed) {
@@ -271,7 +267,6 @@ function MenuItems() {
     }
   };
 
-  // Filter items by category & search term
   const filteredItems = useMemo(() => {
     return menuItems.filter((item) => {
       const matchesCategory =
@@ -294,7 +289,6 @@ function MenuItems() {
   return (
     <div className="space-y-6">
 
-      {/* Top Header Row */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-neutral-900 dark:text-white tracking-tight">
@@ -314,9 +308,7 @@ function MenuItems() {
         </button>
       </div>
 
-      {/* Filter Tabs & Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-neutral-900 p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs">
-        {/* Category Pill Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           <button
             onClick={() => setSelectedCategory('all')}
@@ -343,7 +335,6 @@ function MenuItems() {
           ))}
         </div>
 
-        {/* Live Search Input */}
         <div className="relative w-full md:w-64 flex-shrink-0">
           <input
             type="text"
@@ -356,7 +347,6 @@ function MenuItems() {
         </div>
       </div>
 
-      {/* Menu Items Table */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
@@ -412,7 +402,7 @@ function MenuItems() {
 
                       <td className="px-6 py-4">
                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
-                          {item.categoryId?.name || '—'}
+                          {item.categoryId?.name || '-'}
                         </span>
                       </td>
 
@@ -427,7 +417,6 @@ function MenuItems() {
                         )}
                       </td>
 
-                      {/* Availability Toggle Switch */}
                       <td className="px-6 py-4">
                         <button
                           type="button"
@@ -471,12 +460,10 @@ function MenuItems() {
         )}
       </div>
 
-      {/* ── Add / Edit Menu Item Modal ── */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden my-6">
 
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-neutral-800 bg-neutral-950 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className={`p-2 rounded-xl ${editingId ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
@@ -494,7 +481,6 @@ function MenuItems() {
               </button>
             </div>
 
-            {/* Modal Form Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <form id="menu-item-form" onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -527,7 +513,6 @@ function MenuItems() {
                   <input type="text" name="description" value={form.description} onChange={handleChange} className={inputCls} placeholder="Short description of dish or combo items..." />
                 </div>
 
-                {/* Special Deal Checkbox */}
                 <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
                   <label className="flex items-center gap-2 text-sm font-bold text-amber-500 cursor-pointer select-none">
                     <input
@@ -544,7 +529,6 @@ function MenuItems() {
                   </p>
                 </div>
 
-                {/* Food Emoji Picker Grid (If No Image) */}
                 <div className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">
                     Quick Food Emoji Picker (If No Image Uploaded)
@@ -568,7 +552,6 @@ function MenuItems() {
                   <p className="text-[11px] text-neutral-400">Selected Icon: <span className="text-base">{form.emoji}</span></p>
                 </div>
 
-                {/* Image Input */}
                 <div className="pt-3 border-t border-neutral-800 space-y-3">
                   <div className="flex items-center gap-2">
                     <Upload className="w-4 h-4 text-amber-500" />
@@ -591,7 +574,7 @@ function MenuItems() {
                     <div className="space-y-1">
                       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageFileChange}
                         className="w-full text-sm text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500/10 file:text-amber-500 hover:file:bg-amber-500/20 cursor-pointer" />
-                      <p className="text-[11px] text-neutral-400">Max 2 MB — will be auto-compressed &amp; resized to 800px</p>
+                      <p className="text-[11px] text-neutral-400">Max 2 MB. Will be auto-compressed &amp; resized to 800px</p>
                     </div>
                   )}
                   {form.image && (
@@ -608,7 +591,6 @@ function MenuItems() {
                   )}
                 </div>
 
-                {/* Portion / Size Variants */}
                 <div className="pt-3 border-t border-neutral-800 space-y-3">
                   <div className="flex items-center justify-between">
                     <button type="button" onClick={() => setShowVariants((v) => !v)} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-300">
@@ -622,7 +604,7 @@ function MenuItems() {
                     </button>
                   </div>
                   {showVariants && (form.variants.length === 0 ? (
-                    <p className="text-xs text-neutral-400 italic bg-neutral-950 p-3 rounded-xl border border-dashed border-neutral-800">No variants — click "Add Variant" to add sizes like Half / Full / Large.</p>
+                    <p className="text-xs text-neutral-400 italic bg-neutral-950 p-3 rounded-xl border border-dashed border-neutral-800">No variants. Click "Add Variant" to add sizes like Half / Full / Large.</p>
                   ) : (
                     <div className="space-y-2">
                       <div className="grid grid-cols-12 gap-2 px-3 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
@@ -640,7 +622,6 @@ function MenuItems() {
                   ))}
                 </div>
 
-                {/* Recipe Builder */}
                 <div className="pt-3 border-t border-neutral-800 space-y-3">
                   <div className="flex items-center justify-between">
                     <button type="button" onClick={() => setShowRecipe((r) => !r)} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-300">
@@ -685,7 +666,6 @@ function MenuItems() {
               </form>
             </div>
 
-            {/* Modal Footer */}
             <div className="p-4 border-t border-neutral-800 flex justify-end gap-3 bg-neutral-950 flex-shrink-0">
               <button
                 type="button"

@@ -1,6 +1,5 @@
 const Coupon = require('../models/Coupon');
 
-// Helper function to calculate valid discount for a coupon
 const calculateCouponDiscount = (coupon, subtotal) => {
   if (!coupon.isActive) {
     throw new Error('Coupon is inactive');

@@ -157,9 +157,7 @@ function Suppliers() {
         </button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Active Suppliers */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex items-center gap-4 shadow-xs">
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
             <Store className="w-6 h-6 text-amber-500" />
@@ -174,7 +172,6 @@ function Suppliers() {
           </div>
         </div>
 
-        {/* Total Payable Balance */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 flex items-center gap-4 shadow-xs">
           <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center flex-shrink-0">
             <Wallet className="w-6 h-6 text-rose-500" />
@@ -190,7 +187,6 @@ function Suppliers() {
         </div>
       </div>
 
-      {/* Search Input Bar */}
       <div className="relative max-w-md">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
         <input
@@ -203,7 +199,6 @@ function Suppliers() {
       </div>
 
 
-      {/* Suppliers Table */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
@@ -239,7 +234,7 @@ function Suppliers() {
                         {s.address && <p className="text-xs text-neutral-400 mt-0.5">{s.address}</p>}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium text-neutral-800 dark:text-neutral-200">{s.contactPerson || '—'}</div>
+                        <div className="font-medium text-neutral-800 dark:text-neutral-200">{s.contactPerson || '-'}</div>
                         <div className="text-xs font-mono text-neutral-500 dark:text-neutral-400">{s.phone || ''}</div>
                       </td>
                       <td className="px-6 py-4">
@@ -294,7 +289,6 @@ function Suppliers() {
         )}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
@@ -350,7 +344,6 @@ function Suppliers() {
                 />
               </div>
 
-              {/* Items Supplied Multi-Select Checkboxes */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
                   Items Supplied (Catalog)

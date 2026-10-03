@@ -36,17 +36,14 @@ function Orders() {
   const [loading, setLoading]     = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Modal State
   const [checkoutOrder, setCheckoutOrder]   = useState(null);
   const [receiptOrder, setReceiptOrder]     = useState(null);
   const [restaurantName, setRestaurantName] = useState('');
   const [userRole, setUserRole]             = useState('');
 
-  // Order form state
   const [orderType, setOrderType] = useState('dine-in');
   const [tableId, setTableId]     = useState('');
 
-  // Customer search state
   const [customerPhone, setCustomerPhone]         = useState('');
   const [customerSearch, setCustomerSearch]       = useState([]);
   const [selectedCustomer, setSelectedCustomer]   = useState(null);
@@ -60,12 +57,11 @@ function Orders() {
   const [currentCreatedOrder, setCurrentCreatedOrder] = useState(null);
   const [variantPickerItem, setVariantPickerItem] = useState(null);
 
-  // POS extras
   const [taxRate, setTaxRate]             = useState(0);
   const [itemSearch, setItemSearch]       = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
 
-  // Running tab — checks if this table already has an active unpaid order (not completed yet)
+  // Running tab: checks if this table already has an active unpaid order (not completed yet)
   const existingOpenOrder = useMemo(() => {
     if (orderType === 'dine-in' && tableId) {
       return orders.find(
@@ -80,7 +76,7 @@ function Orders() {
 
   const activeTabOrder = currentCreatedOrder || existingOpenOrder;
 
-  // ── Running tab sync: Sync cart & open order state whenever orders, tableId or orderType changes ──
+  // Keeps cart and open order in sync when orders, tableId or orderType change
   useEffect(() => {
     if (orderType !== 'dine-in') return;
 
@@ -200,7 +196,6 @@ function Orders() {
     return () => clearInterval(interval);
   }, []);
 
-  // ── Category / Search filter ─────────────────────────────────────────────
   const uniqueCategories = useMemo(() => {
     const cats = new Set();
     menuItems.forEach((item) => {
@@ -225,7 +220,6 @@ function Orders() {
     return items;
   }, [menuItems, categoryFilter, itemSearch]);
 
-  // ── Customer handlers ────────────────────────────────────────────────────
   const handlePhoneChange = (val) => {
     setCustomerPhone(val);
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -272,7 +266,6 @@ function Orders() {
     } finally { setNewCustSubmitting(false); }
   };
 
-  // ── Cart handlers ────────────────────────────────────────────────────────
   const addToCart = (menuItem, variant = null) => {
     const cartKey = variant ? `${menuItem._id}__${variant.name}` : menuItem._id;
     const basePrice = menuItem.isSpecialDeal && menuItem.dealPrice > 0 ? menuItem.dealPrice : menuItem.price;
@@ -341,10 +334,9 @@ function Orders() {
   const taxAmount    = Math.round(cartSubtotal * numericTaxRate / 100);
   const grandTotal   = cartSubtotal + taxAmount;
 
-  // Unsent items check
   const hasUnsentItems = cart.some((i) => !i.isSentToKitchen);
 
-  // ── 1. Place Order to Kitchen (CART CLEAR NAHI HOGA) ──────────────────────
+  // Cart is intentionally not cleared when sending to kitchen; items are marked as sent
   const handleSendToKitchen = async () => {
     if (cart.length === 0) { toast.error('Add at least one item to the cart'); return; }
     if (orderType === 'dine-in' && !tableId) { toast.error('Please select a table for dine-in orders'); return; }
@@ -401,7 +393,6 @@ function Orders() {
     } finally { setSubmitting(false); }
   };
 
-  // ── 2. Open Payment Modal ────────────────────────────────────────────────
   const handleOpenCheckoutModal = () => {
     if (activeTabOrder) {
       setCheckoutOrder(activeTabOrder);
@@ -410,7 +401,7 @@ function Orders() {
     }
   };
 
-  // ── 3. Handle Final Payment Completion (CART TABHI CLEAR HOGA) ───────────
+  // Cart is only cleared once payment completes
   const handlePaymentSubmit = async ({ payments, changeAmount, couponCode, customerId }) => {
     try {
       const res = await api.put(`/orders/${checkoutOrder._id}/pay`, {
@@ -436,7 +427,6 @@ function Orders() {
 
   const inputCls = 'w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500 transition';
 
-  // Selected Table info
   const selectedTableObj = tables.find((t) => t._id === tableId);
 
   // Live order status (pending, preparing, ready, completed/served)
@@ -456,7 +446,6 @@ function Orders() {
 
   return (
     <div className="space-y-5">
-      {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
@@ -466,7 +455,6 @@ function Orders() {
             Create orders, manage cart, and process customer payments
           </p>
         </div>
-        {/* Order Type Selector */}
         <div className="flex gap-2 flex-shrink-0">
           {['dine-in', 'takeaway', 'delivery'].map((type) => (
             <button
@@ -487,16 +475,12 @@ function Orders() {
         </div>
       </div>
 
-      {/* Main POS Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5" style={{ minHeight: 'calc(100vh - 200px)' }}>
 
-        {/* ── LEFT: Menu Items ──────────────────────────────────── */}
         <div className="lg:col-span-2 flex flex-col gap-4">
 
-          {/* Order Config Row */}
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 shadow-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Table Selection */}
               {orderType === 'dine-in' && (
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
@@ -510,14 +494,13 @@ function Orders() {
                     <option value="">Choose a table...</option>
                     {tables.map((t) => (
                       <option key={t._id} value={t._id}>
-                        Table {t.tableNumber} ({t.capacity} seats) — {t.status}
+                        Table {t.tableNumber} ({t.capacity} seats): {t.status}
                       </option>
                     ))}
                   </select>
                 </div>
               )}
 
-              {/* Customer Search */}
               <div className="relative">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
                   Customer Phone <span className="text-neutral-400 font-normal normal-case">(optional)</span>
@@ -590,10 +573,8 @@ function Orders() {
             </div>
           </div>
 
-          {/* Category Filter + Search Bar */}
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-3 shadow-xs">
             <div className="flex flex-col sm:flex-row gap-3">
-              {/* Category tabs */}
               <div className="flex items-center gap-2 flex-wrap flex-1">
                 {['All', ...uniqueCategories].map((cat) => (
                   <button
@@ -609,7 +590,6 @@ function Orders() {
                   </button>
                 ))}
               </div>
-              {/* Search */}
               <div className="relative flex-shrink-0 sm:w-52">
                 <input
                   type="text"
@@ -623,9 +603,7 @@ function Orders() {
             </div>
           </div>
 
-          {/* Menu Items Grid */}
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 shadow-xs flex-1">
-            {/* Variant Picker Modal */}
             {variantPickerItem && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                 <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-800 w-full max-w-xs p-5 space-y-4">
@@ -723,11 +701,9 @@ function Orders() {
           </div>
         </div>
 
-        {/* ── RIGHT: Cart ───────────────────────────────────────── */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xs flex flex-col"
           style={{ height: 'calc(100vh - 160px)', position: 'sticky', top: '80px' }}>
 
-          {/* Cart Header */}
           <div className="px-4 pt-4 pb-3 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center flex-shrink-0">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-extrabold text-neutral-900 dark:text-white flex items-center gap-1.5">
@@ -744,7 +720,7 @@ function Orders() {
             )}
           </div>
 
-          {/* Scrollable Cart Items (NEVER REMOVED UNTIL PAID) */}
+          {/* Cart items stay until payment is completed */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
             {cart.length === 0 ? (
               <div className="py-16 text-center text-neutral-400 dark:text-neutral-500 flex flex-col items-center gap-3">
@@ -801,7 +777,6 @@ function Orders() {
                         </p>
                       </div>
 
-                      {/* Qty Stepper */}
                       <div className="flex items-center gap-1 flex-shrink-0">
                         {!c.isSentToKitchen && (
                           <button onClick={() => updateQuantity(c.cartKey, -1)}
@@ -825,7 +800,6 @@ function Orders() {
                       </div>
                     </div>
 
-                    {/* Per-item Discount */}
                     {!c.isSentToKitchen && (
                       <div className="flex items-center gap-2 pt-1.5 border-t border-neutral-200 dark:border-neutral-800 text-xs">
                         <Tag className="w-3 h-3 text-amber-500 flex-shrink-0" />
@@ -848,10 +822,9 @@ function Orders() {
             )}
           </div>
 
-          {/* ── Cart Footer: Status Banner + Totals + Action Buttons ── */}
           <div className="px-4 py-3 border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 rounded-b-xl flex-shrink-0 space-y-2.5">
             
-            {/* Realtime Order Status Bar — ONLY shows AFTER order has been sent to kitchen! */}
+            {/* Realtime Order Status Bar. Only shows AFTER order has been sent to kitchen */}
             {activeTabOrder && !hasUnsentItems && cart.length > 0 && (
               <div className={`p-2.5 border rounded-xl text-center text-xs font-bold transition-all ${
                 isServedOrCompleted
@@ -863,24 +836,22 @@ function Orders() {
                   : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
               }`}>
                 {isServedOrCompleted ? (
-                  <span>✔ Table served — ready for checkout & payment</span>
+                  <span>✔ Table served. Ready for checkout & payment</span>
                 ) : currentOrderStatus === 'ready' ? (
-                  <span>🔔 Order READY — ready for serving</span>
+                  <span>🔔 Order READY. Ready for serving</span>
                 ) : currentOrderStatus === 'preparing' ? (
-                  <span>🍳 Order (PREPARING) — kitchen is cooking</span>
+                  <span>🍳 Order (PREPARING): kitchen is cooking</span>
                 ) : (
-                  <span>⏱ Order sent (PENDING) — kitchen processing</span>
+                  <span>⏱ Order sent (PENDING): kitchen processing</span>
                 )}
               </div>
             )}
 
-            {/* Subtotal */}
             <div className="flex justify-between items-center text-xs">
               <span className="text-neutral-500 dark:text-neutral-400">Subtotal</span>
               <span className="font-semibold text-neutral-900 dark:text-white">Rs. {cartSubtotal}</span>
             </div>
 
-            {/* Tax Row */}
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-1.5">
                 <Percent className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
@@ -891,13 +862,11 @@ function Orders() {
               <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Rs. {taxAmount}</span>
             </div>
 
-            {/* Grand Total */}
             <div className="flex justify-between items-center pt-2 border-t border-neutral-200 dark:border-neutral-800">
               <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-700 dark:text-neutral-200">Total Payable</span>
               <span className="text-xl font-extrabold text-amber-500">Rs. {grandTotal}</span>
             </div>
 
-            {/* ── Dynamic Buttons Logic ── */}
             {hasUnsentItems ? (
               // CASE 1: Unsent new items exist in cart -> Click sends to Kitchen
               <button
@@ -943,8 +912,7 @@ function Orders() {
               </button>
             )}
 
-            {/* Clear Cart Link */}
-            {cart.length > 0 && !activeTabOrder && (
+              {cart.length > 0 && !activeTabOrder && (
               <div className="text-right pt-1">
                 <button
                   onClick={() => { setCart([]); toast('Cart cleared', { icon: '🗑️' }); }}
@@ -959,7 +927,6 @@ function Orders() {
         </div>
       </div>
 
-      {/* Checkout Modal */}
       {checkoutOrder && (
         <CheckoutModal
           order={checkoutOrder}
@@ -969,7 +936,6 @@ function Orders() {
         />
       )}
 
-      {/* Receipt Modal */}
       {receiptOrder && (
         <ReceiptModal
           order={receiptOrder}

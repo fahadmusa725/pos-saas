@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Best-effort email send — caller is responsible for catching failures
+// Best-effort email send. The caller is responsible for catching failures
 // so a notification issue never blocks the underlying operation.
 const sendEmail = async ({ to, subject, text }) => {
   return transporter.sendMail({

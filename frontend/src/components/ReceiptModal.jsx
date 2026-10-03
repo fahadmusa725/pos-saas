@@ -39,7 +39,6 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-      {/* CSS style block for print media query override */}
       <style>{`
         @media print {
           .printable-items-list {
@@ -51,7 +50,6 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
 
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl max-w-md w-full p-5 shadow-2xl flex flex-col max-h-[90vh]">
         
-        {/* Modal Top Actions bar (fixed top, hidden in print) */}
         <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 pb-3 shrink-0 print:hidden">
           <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
             <CheckCircle className="w-4 h-4" /> Thermal Invoice / Receipt
@@ -64,10 +62,8 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
           </button>
         </div>
 
-        {/* Thermal 80mm Printable Receipt Box */}
         <div className="bg-white text-neutral-900 p-4 rounded-xl border border-neutral-300 flex flex-col overflow-hidden font-mono text-xs shadow-sm select-text flex-1 my-3 space-y-2">
           
-          {/* Receipt Top Header & Order Info (Fixed Top inside ticket) */}
           <div className="shrink-0 space-y-2">
             <div className="text-center space-y-0.5 pb-1">
               <h2 className="text-lg font-black tracking-wider uppercase text-neutral-950">{displayName}</h2>
@@ -95,7 +91,6 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
               )}
             </div>
 
-            {/* Items Column Header */}
             <div className="flex justify-between font-extrabold text-[10px] uppercase tracking-wider border-b border-neutral-400 pb-1 text-neutral-800 pt-1">
               <span className="w-8">QTY</span>
               <span className="flex-1 px-1">ITEM DESCRIPTION</span>
@@ -103,7 +98,6 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
             </div>
           </div>
 
-          {/* Items List (SCROLLABLE MIDDLE CONTAINER) */}
           <div className="flex-1 overflow-y-auto max-h-[35vh] space-y-2 py-1 pr-1 border-b border-neutral-200 printable-items-list">
             {!hasRounds ? (
               items.map((item, idx) => {
@@ -183,7 +177,6 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
             )}
           </div>
 
-          {/* Totals, Financial Breakdown & Footer (Fixed Bottom inside ticket) */}
           <div className="shrink-0 pt-1 space-y-2">
             <div className="space-y-1 text-[11px]">
               <div className="flex justify-between text-neutral-700">
@@ -211,7 +204,6 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
               </div>
             </div>
 
-            {/* Payment Details */}
             <div className="space-y-1 text-[11px]">
               <div className="font-bold uppercase text-neutral-800 text-[10px]">Payment Details:</div>
               {order.paymentBreakdown && order.paymentBreakdown.length > 0 ? (
@@ -236,7 +228,6 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
               )}
             </div>
 
-            {/* Barcode & Footer Note */}
             <div className="text-center pt-2 space-y-1 border-t border-dashed border-neutral-300">
               {showBarcode && (
                 <div className="flex items-center justify-center gap-1 h-5 px-4">
@@ -258,7 +249,6 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
 
         </div>
 
-        {/* Modal Footer Buttons (STICKY BOTTOM, ALWAYS VISIBLE, HIDDEN IN PRINT) */}
         <div className="flex gap-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 shrink-0 print:hidden">
           <button
             onClick={handlePrint}

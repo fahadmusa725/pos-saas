@@ -31,13 +31,11 @@ function WaiterScreen() {
   const audioEnabledRef = useRef(true); // ref so socket callbacks get fresh value
   const [updatingItemId, setUpdatingItemId] = useState(null);
 
-  // Notification bell state
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef(null);
 
-  // History tab states
   const [historyOrders, setHistoryOrders] = useState([]);
   const [historyLimit, setHistoryLimit] = useState(50);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -47,7 +45,6 @@ function WaiterScreen() {
   // Keep ref in sync with state (fixes stale closure in socket callbacks)
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
-  // Audio notification when kitchen marks item as ready
   const playReadySound = () => {
     if (!audioEnabledRef.current) return;
     try {
@@ -107,7 +104,6 @@ function WaiterScreen() {
   useEffect(() => {
     fetchReadyOrders(true);
 
-    // Socket.io real-time connection
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
     const socket = io(socketUrl);
     socketRef.current = socket;
@@ -155,7 +151,6 @@ function WaiterScreen() {
     };
   }, [user, activeTab]);
 
-  // Fetch notifications (low-stock + recent orders)
   const fetchNotifications = async () => {
     try {
       const notifList = [];
@@ -186,7 +181,7 @@ function WaiterScreen() {
             id,
             type: 'order',
             title: `New Order #${ord.orderNumber || ord._id?.slice(-4).toUpperCase()}`,
-            body: `${ord.items?.length || 0} items · Rs. ${amt != null ? Number(amt).toFixed(0) : '—'} · ${ord.status}`,
+            body: `${ord.items?.length || 0} items · Rs. ${amt != null ? Number(amt).toFixed(0) : '-'} · ${ord.status}`,
             time: ord.createdAt,
             read: readNotifIds.includes(id),
           });
@@ -204,7 +199,6 @@ function WaiterScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Close notification panel on outside click
   useEffect(() => {
     const handleClick = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
@@ -244,7 +238,6 @@ function WaiterScreen() {
     try {
       await api.put(`/orders/${orderId}/items/${itemId}/status`, { status: 'served' });
       toast.success('Item marked as SERVED!');
-      // Update local state
       setOrders((prevOrders) =>
         prevOrders.map((order) => {
           if (order._id === orderId) {
@@ -273,7 +266,6 @@ function WaiterScreen() {
       (order.items || []).some((item) => item.status === 'ready')
   );
 
-  // Extract served items for history tab
   const servedItemsList = [];
   historyOrders.forEach((order) => {
     if (order.status === 'cancelled') return;
@@ -298,10 +290,8 @@ function WaiterScreen() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 md:p-6 space-y-6">
-      {/* Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 md:px-6 shadow-xl">
         <div className="flex items-center gap-3">
-          {/* Hamburger menu moved to LEFT side */}
           <ScreenNavPanel />
           <div>
             <div className="flex items-center gap-2">
@@ -319,7 +309,6 @@ function WaiterScreen() {
         </div>
 
         <div className="flex items-center gap-3 self-end md:self-auto flex-wrap">
-          {/* Bell Notification Icon — BEFORE Live Queue tab buttons */}
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setNotifOpen((p) => !p)}
@@ -398,7 +387,6 @@ function WaiterScreen() {
             )}
           </div>
 
-          {/* Tab Selector */}
           <div className="flex items-center p-1 rounded-xl bg-neutral-950 border border-neutral-800">
             <button
               onClick={() => setActiveTab('queue')}
@@ -448,7 +436,6 @@ function WaiterScreen() {
         </div>
       </div>
 
-      {/* Main Content Area */}
       {activeTab === 'queue' ? (
         loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -494,7 +481,6 @@ function WaiterScreen() {
                   key={order._id}
                   className="bg-neutral-900 border-2 border-amber-500/40 rounded-2xl shadow-xl flex flex-col justify-between overflow-hidden"
                 >
-                  {/* Order Top Bar */}
                   <div className="p-4 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="p-2 rounded-xl bg-amber-500 text-neutral-950 font-extrabold text-sm flex items-center justify-center">
@@ -520,7 +506,6 @@ function WaiterScreen() {
                     </div>
                   </div>
 
-                  {/* Ready Items List */}
                   <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-80">
                     {readyItems.map((item) => (
                       <div
@@ -559,7 +544,6 @@ function WaiterScreen() {
                     ))}
                   </div>
 
-                  {/* Card Footer */}
                   <div className="p-3 bg-neutral-950/80 border-t border-neutral-800 text-center">
                     <p className="text-[11px] text-neutral-500 font-medium">
                       Deliver ready items to Table {tableNum}
@@ -638,7 +622,6 @@ function WaiterScreen() {
               </div>
             )}
 
-            {/* Load More Pagination */}
             {historyOrders.length >= historyLimit && (
               <div className="mt-4 text-center border-t border-neutral-800 pt-4">
                 <button

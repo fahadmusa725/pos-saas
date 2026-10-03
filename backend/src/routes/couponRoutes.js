@@ -13,11 +13,11 @@ const { setTenant } = require('../middleware/tenantMiddleware');
 
 router.use(protect, setTenant);
 
-// Validate endpoint — any authenticated staff can validate a coupon during checkout
+// Validate endpoint: any authenticated staff can validate a coupon during checkout
 // (cashier needs this for order creation; no module permission needed)
 router.post('/validate', authorize('restaurant-admin', 'manager', 'cashier', 'waiter'), validateCoupon);
 
-// Coupon management — requires 'coupons' permission (restaurant-admin always passes,
+// Coupon management: requires 'coupons' permission (restaurant-admin always passes,
 // managers and others need 'coupons' in their permissions[])
 router.route('/')
   .get(checkPermission('coupons'), getCoupons)

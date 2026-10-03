@@ -55,7 +55,6 @@ function Overview() {
         api.get('/orders'),
       ]);
 
-      // 1. Today Sales
       let todayRev = 0;
       let todayOrd = 0;
       if (todaySalesRes.status === 'fulfilled') {
@@ -64,7 +63,6 @@ function Overview() {
         todayOrd = d?.totalOrders ?? 0;
       }
 
-      // 2. All Sales
       let allRev = 0;
       let allOrd = 0;
       if (allSalesRes.status === 'fulfilled') {
@@ -73,7 +71,6 @@ function Overview() {
         allOrd = d?.totalOrders ?? 0;
       }
 
-      // 3. Counts
       const catCount = categoriesRes.status === 'fulfilled' ? (categoriesRes.value.data?.count ?? categoriesRes.value.data?.data?.length ?? 0) : 0;
       const menuCount = menuItemsRes.status === 'fulfilled' ? (menuItemsRes.value.data?.count ?? menuItemsRes.value.data?.data?.length ?? 0) : 0;
       const tblCount = tablesRes.status === 'fulfilled' ? (tablesRes.value.data?.count ?? tablesRes.value.data?.data?.length ?? 0) : 0;
@@ -91,7 +88,6 @@ function Overview() {
         tablesCount: tblCount,
       });
 
-      // 4. Best Sellers
       if (bestSellersRes.status === 'fulfilled') {
         const raw = bestSellersRes.value.data;
         const arr = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
@@ -105,11 +101,9 @@ function Overview() {
         );
       }
 
-      // 5. Recent Orders
       if (ordersRes.status === 'fulfilled') {
         const raw = ordersRes.value.data;
         const arr = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
-        // Slice top 5 recent orders
         setRecentOrders(arr.slice(0, 5));
       }
 
@@ -172,7 +166,6 @@ function Overview() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">
           Dashboard
@@ -182,7 +175,6 @@ function Overview() {
         </p>
       </div>
 
-      {/* ROW 1: TOP METRIC CARDS (Revenue-focused) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading ? (
           [1, 2, 3, 4].map((n) => (
@@ -197,7 +189,6 @@ function Overview() {
           ))
         ) : (
           <>
-            {/* Today's Revenue */}
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs relative overflow-hidden group hover:border-amber-500/40 transition">
               <div className="flex items-center justify-between mb-3">
                 <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
@@ -215,7 +206,6 @@ function Overview() {
               </p>
             </div>
 
-            {/* All-Time Revenue */}
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs relative overflow-hidden group hover:border-emerald-500/40 transition">
               <div className="flex items-center justify-between mb-3">
                 <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
@@ -233,7 +223,6 @@ function Overview() {
               </p>
             </div>
 
-            {/* Avg Order Value */}
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs relative overflow-hidden group hover:border-purple-500/40 transition">
               <div className="flex items-center justify-between mb-3">
                 <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-500 border border-purple-500/20">
@@ -249,7 +238,6 @@ function Overview() {
               <p className="text-xs text-neutral-400 mt-1.5 font-medium">Per order average</p>
             </div>
 
-            {/* Total Orders Count */}
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs relative overflow-hidden group hover:border-blue-500/40 transition flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -273,7 +261,6 @@ function Overview() {
         )}
       </div>
 
-      {/* ROW 2: QUICK ACCESS CARDS */}
       <div>
         <h2 className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-3">
           Quick Access & Catalog
@@ -323,9 +310,7 @@ function Overview() {
         )}
       </div>
 
-      {/* ROW 3: TOP SELLING ITEMS & RECENT TRANSACTIONS GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* TOP SELLING ITEMS */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -377,7 +362,6 @@ function Overview() {
           )}
         </div>
 
-        {/* RECENT TRANSACTIONS */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -409,7 +393,7 @@ function Overview() {
               {recentOrders.map((order) => {
                 const orderTime = order.createdAt
                   ? new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : '—';
+                  : '-';
 
                 const tableNum = order.tableId?.tableNumber ?? order.tableNumber ?? (order.orderType === 'dine-in' ? 'T-?' : 'Takeaway');
 

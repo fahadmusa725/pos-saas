@@ -23,19 +23,19 @@ const createDemoRequest = async (req, res) => {
       message: message || '',
     });
 
-    // Best-effort notification — failure here must never fail the request,
+    // Best-effort notification. Failure here must never fail the request,
     // since the demo request is already saved to the database.
     try {
       await sendEmail({
         to: process.env.NOTIFY_EMAIL,
-        subject: `New Demo Request — ${restaurantName}`,
+        subject: `New Demo Request: ${restaurantName}`,
         text: `A new demo request has been submitted.
 
 Name: ${name}
 Restaurant: ${restaurantName}
 Email: ${email}
 Phone: ${phone}
-Message: ${message || '—'}
+Message: ${message || '-'}
 Submitted At: ${demoRequest.createdAt.toLocaleString()}`,
       });
     } catch (emailError) {

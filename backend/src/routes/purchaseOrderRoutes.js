@@ -9,7 +9,7 @@ const {
 const { protect, checkPermission } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
 
-// checkPermission('purchase-orders') — restaurant-admin always passes, others need 'purchase-orders' in permissions[]
+// checkPermission('purchase-orders'): restaurant-admin always passes, others need 'purchase-orders' in permissions[]
 router.use(protect, setTenant, checkPermission('purchase-orders'));
 
 router.route('/')

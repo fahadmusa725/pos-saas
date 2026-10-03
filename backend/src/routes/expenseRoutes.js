@@ -10,7 +10,7 @@ const {
 const { protect, checkPermission } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
 
-// checkPermission('expenses') — restaurant-admin always passes, others need 'expenses' in permissions[]
+// checkPermission('expenses'): restaurant-admin always passes, others need 'expenses' in permissions[]
 router.use(protect, setTenant, checkPermission('expenses'));
 
 // /summary must be defined before /:id

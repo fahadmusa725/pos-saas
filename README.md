@@ -1,6 +1,6 @@
-# DineFlow — Multi-Restaurant POS System
+# DineFlow: Multi-Restaurant POS System
 
-A point of sale platform built for restaurants, designed so one system can serve many restaurants at once — each with its own menu, staff, orders, inventory, and data, completely isolated from every other restaurant on the platform.
+A point of sale platform built for restaurants, designed so one system can serve many restaurants at once. Each with its own menu, staff, orders, inventory, and data, completely isolated from every other restaurant on the platform.
 
 Built with MongoDB, Express, React, and Node.js, with Socket.io handling live updates to the kitchen and waiter screens.
 
@@ -14,7 +14,7 @@ Every restaurant that signs up gets its own isolated space on the platform. Thei
 - Menu item images via direct upload or a pasted image URL
 - Table tracking (available / occupied / reserved)
 - Order creation for dine-in, takeaway, and delivery
-- Dine-in orders support a running tab — more items can be added to an open table's order as the meal goes on (e.g. starters first, dessert later), all on a single bill, with each new round flagged clearly for the kitchen
+- Dine-in orders support a running tab. More items can be added to an open table's order as the meal goes on (e.g. starters first, dessert later), all on a single bill, with each new round flagged clearly for the kitchen
 - Takeaway and delivery use a simpler, faster flow: create the order, take payment, print the receipt
 - A dedicated kitchen display screen that updates in real time as orders come in, with status tracking from pending through preparing to ready, and a sound alert on new orders
 - A real-time waiter screen that alerts staff the moment an order is ready to be served
@@ -29,22 +29,22 @@ Every restaurant that signs up gets its own isolated space on the platform. Thei
 ### Payments
 
 - Cash, card, and split payments across multiple methods on a single order, with automatic change calculation
-- Customer credit (tab/udhar) — regular customers can be allowed to carry a balance, which is tracked and settled later
+- Customer credit (tab/udhar): regular customers can be allowed to carry a balance, which is tracked and settled later
 - Per-item discounts and restaurant-wide coupon codes
-- Every financial calculation is verified on the backend — nothing the frontend sends is trusted blindly
+- Every financial calculation is verified on the backend. Nothing the frontend sends is trusted blindly
 - Printable, reprintable receipts
 
 ### Staff
 
 - Role-based accounts: restaurant admin, manager, cashier, waiter, kitchen staff
-- Per-staff permissions — an admin can choose exactly which parts of the dashboard each staff member can access, independent of their role
+- Per-staff permissions: an admin can choose exactly which parts of the dashboard each staff member can access, independent of their role
 
 ### Back office
 
 - Customer records with order history and phone-number lookup at checkout
-- Supplier records and purchase orders — stock and expenses update automatically once a purchase is marked as paid/received
+- Supplier records and purchase orders. Stock and expenses update automatically once a purchase is marked as paid/received
 - Expense tracking by category
-- A reporting section covering financial overview, cash/ledger detail, category sales, best sellers, peak hours, staff performance, customer balances, and supplier dues — all with date-range filtering and charts
+- A reporting section covering financial overview, cash/ledger detail, category sales, best sellers, peak hours, staff performance, customer balances, and supplier dues, all with date-range filtering and charts
 
 ### Platform management
 
@@ -126,7 +126,7 @@ The app runs on `localhost:5173`, and expects the backend on `localhost:5000`.
 
 ## Getting started once it's running
 
-1. Register a restaurant through the sign-up flow — this creates the restaurant and its first admin account
+1. Register a restaurant through the sign-up flow. This creates the restaurant and its first admin account
 2. Log in as the admin
 3. Add categories, then menu items (with recipes, if you want automatic inventory tracking), then set up your tables
 4. Add staff accounts and choose what each one can access

@@ -88,7 +88,6 @@ function App() {
           <Route path="settings" element={<ProtectedRoute permissionId="settings"><Settings /></ProtectedRoute>} />
         </Route>
 
-        {/* Super Admin Panel Routes */}
         <Route
           path="/super-admin"
           element={
