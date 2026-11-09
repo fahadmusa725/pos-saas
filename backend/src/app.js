@@ -1,12 +1,9 @@
-// Standalone Express app export for testing (no DB connection here).
-// server.js calls connectDB() then starts listening; tests import this directly.
+// Standalone Express app export for testing and serverless (no DB connection here).
+// server.js connects the DB and listens locally; index.js is the Vercel entry.
 
 const express = require('express');
-const { Server } = require('socket.io');
-const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
-const jwt = require('jsonwebtoken');
 
 const authRoutes = require('./routes/authRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -24,44 +21,14 @@ const couponRoutes = require('./routes/couponRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes');
 const demoRequestRoutes = require('./routes/demoRequestRoutes');
+const realtimeRoutes = require('./routes/realtimeRoutes');
 
 function createApp() {
   const app = express();
-  const server = http.createServer(app);
 
   const allowedOrigins = process.env.CLIENT_URL
     ? process.env.CLIENT_URL.split(',').map((u) => u.trim())
     : ['http://localhost:5173'];
-
-  const io = new Server(server, {
-    cors: { origin: allowedOrigins, methods: ['GET', 'POST'] },
-  });
-
-  io.use(async (socket, next) => {
-    try {
-      const token = socket.handshake.auth && socket.handshake.auth.token;
-      if (!token) return next(new Error('Authentication required'));
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const User = require('./models/User');
-      const user = await User.findById(decoded.id).select('restaurantId role isActive');
-      if (!user || !user.isActive) return next(new Error('User not found or deactivated'));
-      socket.user = user;
-      next();
-    } catch (err) {
-      next(new Error('Invalid token'));
-    }
-  });
-
-  io.on('connection', (socket) => {
-    if (socket.user && socket.user.restaurantId) {
-      socket.join(socket.user.restaurantId.toString());
-    }
-  });
-
-  app.use((req, res, next) => {
-    req.io = io;
-    next();
-  });
 
   app.use(express.json());
   app.use(cors({
@@ -109,6 +76,7 @@ function createApp() {
   app.use('/api/settings', settingsRoutes);
   app.use('/api/super-admin', superAdminRoutes);
   app.use('/api/demo-requests', demoRequestRoutes);
+  app.use('/api/realtime', realtimeRoutes);
 
   // Central error handler
   app.use((err, req, res, next) => {
@@ -123,7 +91,7 @@ function createApp() {
     res.status(statusCode).json({ success: false, message: err.message });
   });
 
-  return { app, server, io };
+  return app;
 }
 
 module.exports = { createApp };

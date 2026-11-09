@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const Table = require('../models/Table');
 const { stockAfterDelta } = require('../utils/stockQuantity');
+const { publishToRestaurant } = require('../utils/realtime');
 
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString().slice(-6);
@@ -216,7 +217,7 @@ const restoreInventoryForItems = async (processedItems, restaurantId) => {
   return applied;
 };
 
-// Orders leave the API and the socket with their references expanded, exactly like
+// Orders leave the API and realtime with their references expanded, exactly like
 // getOrders: tableId -> { tableNumber }, customerId -> { name, phone }.
 // Mongoose 9 documents support populate() returning a promise (no callback).
 const populateOrderRefs = (order) => {
@@ -428,7 +429,7 @@ exports.createOrder = async (req, res) => {
 
     await populateOrderRefs(order);
 
-    req.io.to(req.tenantId.toString()).emit('newOrder', order);
+    await publishToRestaurant(req.tenantId, 'newOrder', order);
 
     res.status(201).json({ success: true, data: order });
   } catch (error) {
@@ -660,9 +661,9 @@ exports.updateOrderStatus = async (req, res) => {
 
     await populateOrderRefs(updatedOrder);
 
-    req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', updatedOrder);
+    await publishToRestaurant(req.tenantId, 'orderStatusUpdated', updatedOrder);
     if (['completed', 'cancelled'].includes(status)) {
-      req.io.to(req.tenantId.toString()).emit('orderCompleted', updatedOrder);
+      await publishToRestaurant(req.tenantId, 'orderCompleted', updatedOrder);
     }
 
     res.status(200).json({ success: true, data: updatedOrder });
@@ -699,8 +700,8 @@ exports.updateItemStatus = async (req, res) => {
 
     await populateOrderRefs(order);
 
-    req.io.to(req.tenantId.toString()).emit('orderItemStatusUpdated', { orderId, itemId, status });
-    req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
+    await publishToRestaurant(req.tenantId, 'orderItemStatusUpdated', { orderId, itemId, status });
+    await publishToRestaurant(req.tenantId, 'orderStatusUpdated', order);
 
     res.status(200).json({ success: true, data: order });
   } catch (error) {
@@ -873,9 +874,9 @@ exports.markAsPaid = async (req, res) => {
 
     await populateOrderRefs(order);
 
-    req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
+    await publishToRestaurant(req.tenantId, 'orderStatusUpdated', order);
     if (order.paymentStatus === 'paid' || order.status === 'completed') {
-      req.io.to(req.tenantId.toString()).emit('orderCompleted', order);
+      await publishToRestaurant(req.tenantId, 'orderCompleted', order);
     }
 
     res.status(200).json({
@@ -1008,8 +1009,8 @@ exports.addItemsToOrder = async (req, res) => {
 
     await populateOrderRefs(order);
 
-    req.io.to(req.tenantId.toString()).emit('newOrder', order);
-    req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
+    await publishToRestaurant(req.tenantId, 'newOrder', order);
+    await publishToRestaurant(req.tenantId, 'orderStatusUpdated', order);
 
     res.status(200).json({
       success: true,

@@ -6,11 +6,11 @@ const { createApp } = require('./src/app');
 
 connectDB();
 
-// All Express, Socket.io and error handling setup lives in src/app.js
-const { server } = createApp();
+// Local development entry: all Express setup lives in src/app.js
+const app = createApp();
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
