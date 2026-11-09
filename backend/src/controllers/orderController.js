@@ -242,6 +242,35 @@ const deriveOrderStatusFromItems = (order) => {
   return 'pending';
 };
 
+// An order stops holding its table once it is finished or fully covered by recorded
+// payments (a credit entry counts too, so an udhar order releases the table as well).
+const isOrderSettled = (order) => {
+  if (order.paymentStatus === 'paid') return true;
+  const covered = (order.paymentBreakdown || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  return Number(order.total) > 0 && covered >= order.total;
+};
+
+// Table occupancy is derived from the dine-in orders still holding the table, so a
+// second order on the same table (running tab) can never free a table that is in use.
+const syncTableStatus = async (tableId, restaurantId) => {
+  if (!tableId) return;
+  const tableObjectId = tableId._id || tableId;
+
+  const runningOrders = await Order.find({
+    restaurantId,
+    tableId: tableObjectId,
+    orderType: 'dine-in',
+    status: { $nin: ['completed', 'cancelled'] },
+  }).select('paymentStatus paymentBreakdown total');
+
+  const occupied = runningOrders.some((order) => !isOrderSettled(order));
+
+  await Table.findOneAndUpdate(
+    { _id: tableObjectId, restaurantId },
+    { status: occupied ? 'occupied' : 'available' }
+  );
+};
+
 // @desc Create order
 // @route POST /api/orders
 exports.createOrder = async (req, res) => {
@@ -264,9 +293,10 @@ exports.createOrder = async (req, res) => {
     }
 
     // Validate tableId belongs to this tenant
+    let tableBefore = null;
     if (tableId) {
-      const tableCheck = await Table.findOne({ _id: tableId, restaurantId: req.tenantId });
-      if (!tableCheck) {
+      tableBefore = await Table.findOne({ _id: tableId, restaurantId: req.tenantId });
+      if (!tableBefore) {
         return res.status(400).json({ success: false, message: 'Table not found or does not belong to this restaurant' });
       }
     }
@@ -420,16 +450,25 @@ exports.createOrder = async (req, res) => {
       );
     }
 
+    // The order is saved first, so the table can only be held by an order that exists
     if (orderType === 'dine-in' && tableId) {
-      await Table.findOneAndUpdate(
-        { _id: tableId, restaurantId: req.tenantId },
-        { status: 'occupied' }
-      );
+      await syncTableStatus(tableId, req.tenantId);
     }
 
-    await populateOrderRefs(order);
+    try {
+      await populateOrderRefs(order);
 
-    await publishToRestaurant(req.tenantId, 'newOrder', order);
+      await publishToRestaurant(req.tenantId, 'newOrder', order);
+    } catch (postCreateError) {
+      // The request failed after the table was taken, so put the table back as it was
+      if (orderType === 'dine-in' && tableId && tableBefore) {
+        await Table.findOneAndUpdate(
+          { _id: tableId, restaurantId: req.tenantId },
+          { status: tableBefore.status }
+        );
+      }
+      throw postCreateError;
+    }
 
     res.status(201).json({ success: true, data: order });
   } catch (error) {
@@ -652,11 +691,10 @@ exports.updateOrderStatus = async (req, res) => {
       });
     }
 
-    if ((status === 'cancelled' || (status === 'completed' && updatedOrder.paymentStatus === 'paid')) && updatedOrder.tableId) {
-      await Table.findOneAndUpdate(
-        { _id: updatedOrder.tableId, restaurantId: req.tenantId },
-        { status: 'available' }
-      );
+    // A finished order no longer holds its table, but another running order on the same
+    // table keeps it occupied. Must run before populate turns tableId into a document.
+    if (status === 'cancelled' || status === 'completed') {
+      await syncTableStatus(updatedOrder.tableId, req.tenantId);
     }
 
     await populateOrderRefs(updatedOrder);
@@ -852,13 +890,6 @@ exports.markAsPaid = async (req, res) => {
       }
 
       order.amountPaid = realMoneyPaid;
-
-      if (order.tableId) {
-        await Table.findOneAndUpdate(
-          { _id: order.tableId, restaurantId: req.tenantId },
-          { status: 'available' }
-        );
-      }
     } else if (totalCovered > 0) {
       order.paymentStatus = 'partially_paid';
       order.amountPaid = realMoneyPaid;
@@ -871,6 +902,9 @@ exports.markAsPaid = async (req, res) => {
     }
 
     await order.save();
+
+    // The payment is persisted, so the table is released only if nothing else uses it
+    await syncTableStatus(order.tableId, req.tenantId);
 
     await populateOrderRefs(order);
 
