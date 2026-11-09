@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import { getRestaurantChannel } from '../services/realtime';
 import useAuthStore from '../store/authStore';
 import ScreenNavPanel from '../components/ScreenNavPanel';
 import formatQty from '../utils/formatQty';
@@ -21,14 +21,14 @@ import {
 } from 'lucide-react';
 
 function WaiterScreen() {
-  const { user, token } = useAuthStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('queue'); // 'queue' | 'history'
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [audioEnabled, setAudioEnabled] = useState(true);
-  const audioEnabledRef = useRef(true); // ref so socket callbacks get fresh value
+  const audioEnabledRef = useRef(true); // ref so realtime callbacks get fresh value
   const [updatingItemId, setUpdatingItemId] = useState(null);
 
   const [notifOpen, setNotifOpen] = useState(false);
@@ -40,9 +40,7 @@ function WaiterScreen() {
   const [historyLimit, setHistoryLimit] = useState(50);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  const socketRef = useRef(null);
-
-  // Keep ref in sync with state (fixes stale closure in socket callbacks)
+  // Keep ref in sync with state (fixes stale closure in realtime callbacks)
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
   const playReadySound = () => {
@@ -104,49 +102,47 @@ function WaiterScreen() {
   useEffect(() => {
     fetchReadyOrders(true);
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL ||
-      (import.meta.env.PROD ? (() => { throw new Error('VITE_SOCKET_URL is not set in production'); })() : 'http://localhost:5000');
-    const socket = io(socketUrl, { auth: { token } });
-    socketRef.current = socket;
+    if (!user?.restaurantId) return;
 
-    socket.on('connect', () => {
-      // Room is joined server-side via JWT auth; no client-supplied restaurantId needed
-    });
+    const channel = getRestaurantChannel(user.restaurantId);
 
-    socket.on('newOrder', () => {
-      fetchReadyOrders(false);
-    });
-
-    socket.on('orderItemStatusUpdated', ({ status }) => {
-      if (status === 'ready') {
-        playReadySound();
-        toast.success('🔔 Order item is READY to serve!', { duration: 4000 });
-      }
-      fetchReadyOrders(false);
-      if (activeTab === 'history') fetchServedHistory();
-    });
-
-    socket.on('orderStatusUpdated', (updatedOrder) => {
-      if (updatedOrder && (updatedOrder.status === 'completed' || updatedOrder.status === 'cancelled' || updatedOrder.paymentStatus === 'paid')) {
-        setOrders((prev) => prev.filter((o) => o._id !== updatedOrder._id));
-      } else {
+    // Each Ably message carries the same payload the socket used to deliver in message.data.
+    const listeners = [
+      ['newOrder', () => {
         fetchReadyOrders(false);
-      }
-      if (activeTab === 'history') fetchServedHistory();
-    });
+      }],
+      ['orderItemStatusUpdated', (message) => {
+        const { status } = message.data;
+        if (status === 'ready') {
+          playReadySound();
+          toast.success('🔔 Order item is READY to serve!', { duration: 4000 });
+        }
+        fetchReadyOrders(false);
+        if (activeTab === 'history') fetchServedHistory();
+      }],
+      ['orderStatusUpdated', (message) => {
+        const updatedOrder = message.data;
+        if (updatedOrder && (updatedOrder.status === 'completed' || updatedOrder.status === 'cancelled' || updatedOrder.paymentStatus === 'paid')) {
+          setOrders((prev) => prev.filter((o) => o._id !== updatedOrder._id));
+        } else {
+          fetchReadyOrders(false);
+        }
+        if (activeTab === 'history') fetchServedHistory();
+      }],
+      ['orderCompleted', (message) => {
+        const completedOrder = message.data;
+        const orderId = completedOrder?._id || completedOrder;
+        if (orderId) {
+          setOrders((prev) => prev.filter((o) => o._id !== orderId));
+        }
+        if (activeTab === 'history') fetchServedHistory();
+      }],
+    ];
 
-    socket.on('orderCompleted', (completedOrder) => {
-      const orderId = completedOrder?._id || completedOrder;
-      if (orderId) {
-        setOrders((prev) => prev.filter((o) => o._id !== orderId));
-      }
-      if (activeTab === 'history') fetchServedHistory();
-    });
+    listeners.forEach(([name, listener]) => channel.subscribe(name, listener));
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
+      listeners.forEach(([name, listener]) => channel.unsubscribe(name, listener));
     };
   }, [user, activeTab]);
 

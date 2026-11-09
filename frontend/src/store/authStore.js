@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { closeRealtime } from '../services/realtime';
 
 const useAuthStore = create((set) => ({
   user: JSON.parse(localStorage.getItem('user')) || null,
@@ -11,6 +12,7 @@ const useAuthStore = create((set) => ({
   },
 
   logout: () => {
+    closeRealtime();
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     set({ user: null, token: null });

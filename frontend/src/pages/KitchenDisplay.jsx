@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { getRestaurantChannel } from '../services/realtime';
 import useAuthStore from '../store/authStore';
 import ScreenNavPanel from '../components/ScreenNavPanel';
 import formatQty from '../utils/formatQty';
@@ -21,14 +21,14 @@ import {
 } from 'lucide-react';
 
 function KitchenDisplay() {
-  const { user, token } = useAuthStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('live'); // 'live' | 'history'
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [audioEnabled, setAudioEnabled] = useState(true);
-  const audioEnabledRef = useRef(true); // ref so socket callbacks get fresh value
+  const audioEnabledRef = useRef(true); // ref so realtime callbacks get fresh value
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -39,9 +39,7 @@ function KitchenDisplay() {
   const [historyLimit, setHistoryLimit] = useState(50);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  const socketRef = useRef(null);
-
-  // Keep ref in sync with state (fixes stale closure in socket callbacks)
+  // Keep ref in sync with state (fixes stale closure in realtime callbacks)
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
   // Audio beep notification helper using Web Audio API
@@ -114,52 +112,52 @@ function KitchenDisplay() {
   useEffect(() => {
     fetchActiveOrders();
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL ||
-      (import.meta.env.PROD ? (() => { throw new Error('VITE_SOCKET_URL is not set in production'); })() : 'http://localhost:5000');
-    const socket = io(socketUrl, { auth: { token } });
-    socketRef.current = socket;
+    if (!user?.restaurantId) return;
 
-    socket.on('connect', () => {
-      // Room is joined server-side via JWT auth; no client-supplied restaurantId needed
-    });
+    const channel = getRestaurantChannel(user.restaurantId);
 
-    socket.on('newOrder', (newOrder) => {
-      playNewOrderSound();
-      setOrders((prev) => [newOrder, ...prev.filter((o) => o._id !== newOrder._id)]);
-      if (activeTab === 'history') fetchOrderHistory();
-    });
+    // Each Ably message carries the same payload the socket used to deliver in message.data.
+    const listeners = [
+      ['newOrder', (message) => {
+        playNewOrderSound();
+        const newOrder = message.data;
+        setOrders((prev) => [newOrder, ...prev.filter((o) => o._id !== newOrder._id)]);
+        if (activeTab === 'history') fetchOrderHistory();
+      }],
+      ['orderStatusUpdated', (message) => {
+        const updatedOrder = message.data;
+        setOrders((prev) =>
+          prev
+            .map((ord) => (ord._id === updatedOrder._id ? updatedOrder : ord))
+            .filter((ord) => !['completed', 'cancelled'].includes(ord.status))
+        );
+        if (activeTab === 'history') fetchOrderHistory();
+      }],
+      ['orderItemStatusUpdated', (message) => {
+        const { orderId, itemId, status } = message.data;
+        setOrders((prev) =>
+          prev.map((ord) => {
+            if (ord._id === orderId) {
+              const updatedItems = ord.items.map((item) =>
+                item._id === itemId ? { ...item, status } : item
+              );
+              return { ...ord, items: updatedItems };
+            }
+            return ord;
+          })
+        );
+        if (activeTab === 'history') fetchOrderHistory();
+      }],
+      ['orderCompleted', () => {
+        fetchActiveOrders();
+        if (activeTab === 'history') fetchOrderHistory();
+      }],
+    ];
 
-    socket.on('orderStatusUpdated', (updatedOrder) => {
-      setOrders((prev) =>
-        prev
-          .map((ord) => (ord._id === updatedOrder._id ? updatedOrder : ord))
-          .filter((ord) => !['completed', 'cancelled'].includes(ord.status))
-      );
-      if (activeTab === 'history') fetchOrderHistory();
-    });
-
-    socket.on('orderItemStatusUpdated', ({ orderId, itemId, status }) => {
-      setOrders((prev) =>
-        prev.map((ord) => {
-          if (ord._id === orderId) {
-            const updatedItems = ord.items.map((item) =>
-              item._id === itemId ? { ...item, status } : item
-            );
-            return { ...ord, items: updatedItems };
-          }
-          return ord;
-        })
-      );
-      if (activeTab === 'history') fetchOrderHistory();
-    });
-
-    socket.on('orderCompleted', () => {
-      fetchActiveOrders();
-      if (activeTab === 'history') fetchOrderHistory();
-    });
+    listeners.forEach(([name, listener]) => channel.subscribe(name, listener));
 
     return () => {
-      socket.disconnect();
+      listeners.forEach(([name, listener]) => channel.unsubscribe(name, listener));
     };
   }, [user, activeTab]);
 
