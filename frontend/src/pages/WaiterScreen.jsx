@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
 import ScreenNavPanel from '../components/ScreenNavPanel';
+import formatQty from '../utils/formatQty';
 import {
   Bell,
   CheckCircle2,
@@ -163,7 +164,7 @@ function WaiterScreen() {
               id,
               type: 'stock',
               title: `Low Stock: ${item.name}`,
-              body: `${item.currentStock} ${item.unit || 'units'} left (min: ${item.reorderLevel})`,
+              body: `${formatQty(item.currentStock)} ${item.unit || 'units'} left (min: ${formatQty(item.reorderLevel)})`,
               time: item.updatedAt || item.createdAt,
               read: readNotifIds.includes(id),
             });
@@ -229,6 +230,14 @@ function WaiterScreen() {
     localStorage.setItem('read_notifications', JSON.stringify(allIds));
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
+  };
+
+  const dismissNotification = (id) => {
+    setNotifications((prev) => {
+      const updated = prev.filter((n) => n.id !== id);
+      setUnreadCount(updated.filter((n) => !n.read).length);
+      return updated;
+    });
   };
 
   useEffect(() => {
@@ -370,7 +379,8 @@ function WaiterScreen() {
                               const itemId = notif.id.replace('stock-', '');
                               navigate(`/dashboard/inventory?highlight=${itemId}`);
                             } else {
-                              navigate('/dashboard/order-history');
+                              const orderId = notif.id.replace('order-', '');
+                              navigate(`/dashboard/order-history?highlight=${orderId}`);
                             }
                           }}
                           className="mt-1 text-[10px] font-bold text-amber-400 hover:text-amber-300 transition"

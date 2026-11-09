@@ -4,6 +4,7 @@ import useAuthStore from '../store/authStore';
 import api from '../services/api';
 import { APP_MODULES, PLAN_MODULES } from '../config/modules';
 import { useTheme } from '../context/ThemeContext';
+import formatQty from '../utils/formatQty';
 import {
   LayoutDashboard,
   Grid,
@@ -104,7 +105,7 @@ function DashboardLayout() {
               id,
               type: 'stock',
               title: `Low Stock Alert: ${item.name}`,
-              body: `Remaining: ${item.currentStock} ${item.unit || 'units'} (Min Threshold: ${item.reorderLevel} ${item.unit || 'units'})`,
+              body: `Remaining: ${formatQty(item.currentStock)} ${item.unit || 'units'} (Min Threshold: ${formatQty(item.reorderLevel)} ${item.unit || 'units'})`,
               itemId: item._id,
               time: item.updatedAt || item.createdAt,
               read: readNotifIds.includes(id),
@@ -180,7 +181,8 @@ function DashboardLayout() {
       const itemId = notif.id.replace('stock-', '');
       navigate(`/dashboard/inventory?highlight=${itemId}`);
     } else {
-      navigate('/dashboard/order-history');
+      const orderId = notif.id.replace('order-', '');
+      navigate(`/dashboard/order-history?highlight=${orderId}`);
     }
   };
 

@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import formatMoney from '../utils/formatMoney';
 import CheckoutModal from '../components/CheckoutModal';
 import ReceiptModal from '../components/ReceiptModal';
 import {
@@ -35,6 +37,7 @@ const PAY_STATUS_LABELS = {
 };
 
 function OrderHistory() {
+  const location = useLocation();
   const [orders, setOrders]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,6 +52,8 @@ function OrderHistory() {
   const [receiptOrder, setReceiptOrder]     = useState(null);
   const [restaurantName, setRestaurantName] = useState('');
   const [userRole, setUserRole]             = useState('');
+  const [highlightId, setHighlightId]       = useState(null);
+  const highlightRowRef = useRef(null);
 
   const fetchOrders = async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true);
@@ -74,6 +79,27 @@ function OrderHistory() {
       })
       .catch(() => {});
   }, []);
+
+  // Detect ?highlight=orderId from URL (e.g., clicked from notification bell)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const id = params.get('highlight');
+    if (id) {
+      setHighlightId(id);
+      // Clear highlight after 4 seconds
+      const t = setTimeout(() => setHighlightId(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [location.search]);
+
+  // Auto-scroll to highlighted order row once orders load
+  useEffect(() => {
+    if (highlightId && highlightRowRef.current && !loading) {
+      setTimeout(() => {
+        highlightRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
+  }, [highlightId, loading]);
 
   const handleStatusUpdate = async (orderId, status) => {
     try {
@@ -159,7 +185,7 @@ function OrderHistory() {
           { label: 'Total Orders', value: stats.total, color: 'text-neutral-900 dark:text-white' },
           { label: 'Completed', value: stats.completed, color: 'text-emerald-500' },
           { label: 'Unpaid', value: stats.unpaid, color: 'text-rose-500' },
-          { label: 'Revenue (Paid)', value: `Rs. ${stats.revenue.toLocaleString()}`, color: 'text-amber-500' },
+          { label: 'Revenue (Paid)', value: `Rs. ${formatMoney(stats.revenue)}`, color: 'text-amber-500' },
         ].map((s) => (
           <div key={s.label} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 shadow-xs">
             <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{s.label}</p>
@@ -274,9 +300,20 @@ function OrderHistory() {
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
                 {filteredOrders.map((order) => (
-                  <tr key={order._id} className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors">
+                  <tr
+                    key={order._id}
+                    ref={highlightId === order._id ? highlightRowRef : null}
+                    className={`hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors ${
+                      highlightId === order._id ? 'ring-2 ring-amber-500 bg-amber-500/10' : ''
+                    }`}
+                  >
                     <td className="px-3 py-3">
                       <span className="font-mono font-bold text-amber-500">#{order.orderNumber}</span>
+                      {highlightId === order._id && (
+                        <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500 text-neutral-950 animate-pulse">
+                          ALERT FOCUS
+                        </span>
+                      )}
                     </td>
 
                     <td className="px-3 py-3 text-neutral-500 dark:text-neutral-400 whitespace-nowrap text-[11px]">
@@ -305,7 +342,7 @@ function OrderHistory() {
                     </td>
 
                     <td className="px-3 py-3 font-extrabold text-neutral-900 dark:text-white whitespace-nowrap">
-                      Rs. {(order.total || 0).toLocaleString()}
+                      Rs. {formatMoney(order.total)}
                     </td>
 
                     <td className="px-3 py-3">
