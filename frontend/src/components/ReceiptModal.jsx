@@ -62,7 +62,7 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
           </button>
         </div>
 
-        <div className="bg-white text-neutral-900 p-4 rounded-xl border border-neutral-300 flex flex-col overflow-hidden font-mono text-xs shadow-sm select-text flex-1 my-3 space-y-2">
+        <div className="bg-white text-neutral-900 p-4 rounded-xl border border-neutral-300 flex flex-col min-h-0 font-mono text-xs shadow-sm select-text flex-1 my-3 space-y-2">
           
           <div className="shrink-0 space-y-2">
             <div className="text-center space-y-0.5 pb-1">
@@ -78,9 +78,9 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
                 <span>ORDER #: {order.orderNumber}</span>
                 <span className="uppercase text-amber-700">{order.orderType}</span>
               </div>
-              {order.tableId && (
+              {order.tableId?.tableNumber && (
                 <div className="flex justify-between text-neutral-700">
-                  <span>TABLE #: Table {order.tableId.tableNumber || order.tableId}</span>
+                  <span>TABLE #: Table {order.tableId.tableNumber}</span>
                   <span>STATUS: {order.paymentStatus?.toUpperCase()}</span>
                 </div>
               )}
@@ -98,7 +98,7 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-[35vh] space-y-2 py-1 pr-1 border-b border-neutral-200 printable-items-list">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 py-1 pr-1 border-b border-neutral-200 printable-items-list">
             {!hasRounds ? (
               items.map((item, idx) => {
                 const basePrice = item.price * item.quantity;

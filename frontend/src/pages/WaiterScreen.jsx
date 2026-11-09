@@ -9,7 +9,6 @@ import {
   Bell,
   CheckCircle2,
   Clock,
-  Utensils,
   Armchair,
   ShoppingBag,
   Volume2,
@@ -170,7 +169,9 @@ function WaiterScreen() {
             });
           }
         });
-      } catch (_) {}
+      } catch {
+        // Notifications are best effort; ignore a failed source
+      }
       try {
         const ordRes = await api.get('/orders');
         (ordRes.data?.data || []).slice(0, 5).forEach((ord) => {
@@ -185,11 +186,15 @@ function WaiterScreen() {
             read: readNotifIds.includes(id),
           });
         });
-      } catch (_) {}
+      } catch {
+        // Notifications are best effort; ignore a failed source
+      }
       notifList.sort((a, b) => new Date(b.time) - new Date(a.time));
       setNotifications(notifList);
       setUnreadCount(notifList.filter((n) => !n.read).length);
-    } catch (_) {}
+    } catch {
+      // Notification refresh is best effort
+    }
   };
 
   useEffect(() => {
