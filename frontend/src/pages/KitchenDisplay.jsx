@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 function KitchenDisplay() {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('live'); // 'live' | 'history'
   const [orders, setOrders] = useState([]);
@@ -115,14 +115,13 @@ function KitchenDisplay() {
   useEffect(() => {
     fetchActiveOrders();
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-    const socket = io(socketUrl);
+    const socketUrl = import.meta.env.VITE_SOCKET_URL ||
+      (import.meta.env.PROD ? (() => { throw new Error('VITE_SOCKET_URL is not set in production'); })() : 'http://localhost:5000');
+    const socket = io(socketUrl, { auth: { token } });
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      if (user?.restaurantId) {
-        socket.emit('joinRestaurant', user.restaurantId);
-      }
+      // Room is joined server-side via JWT auth; no client-supplied restaurantId needed
     });
 
     socket.on('newOrder', (newOrder) => {
