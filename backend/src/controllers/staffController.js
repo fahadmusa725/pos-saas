@@ -92,9 +92,11 @@ const createStaffMember = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already exists' });
     }
 
-    const finalPassword = password && password.trim().length >= 6
-      ? password.trim()
-      : Math.random().toString(36).slice(-8) + 'A1!';
+    if (password && (typeof password !== 'string' || password.trim().length < 8)) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+
+    const finalPassword = password ? password.trim() : Math.random().toString(36).slice(-8) + 'A1!';
 
     const staffMember = await User.create({
       name,
@@ -168,7 +170,10 @@ const updateStaffMember = async (req, res) => {
       staffMember.permissions = permissions;
     }
 
-    if (password && password.trim().length >= 6) {
+    if (password) {
+      if (typeof password !== 'string' || password.trim().length < 8) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+      }
       staffMember.password = password.trim();
     }
 

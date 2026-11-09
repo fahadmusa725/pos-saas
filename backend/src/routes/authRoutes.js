@@ -1,12 +1,21 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { registerRestaurant, login } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
 const Restaurant = require('../models/Restaurant');
 
-router.post('/register-restaurant', registerRestaurant);
-router.post('/login', login);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later' },
+});
+
+router.post('/register-restaurant', authLimiter, registerRestaurant);
+router.post('/login', authLimiter, login);
 
 router.get('/me', protect, setTenant, (req, res) => {
   res.status(200).json({

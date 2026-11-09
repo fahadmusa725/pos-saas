@@ -6,30 +6,46 @@ const generateToken = require('../utils/generateToken');
 // @route POST /api/auth/register-restaurant
 exports.registerRestaurant = async (req, res) => {
   try {
+    if (process.env.ALLOW_PUBLIC_REGISTRATION === 'false') {
+      return res.status(403).json({ success: false, message: 'Public registration is disabled' });
+    }
+
     const { restaurantName, email, password, phone } = req.body;
 
-    if (!restaurantName || !email || !password) {
+    if (typeof restaurantName !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ success: false, message: 'restaurantName, email and password must be strings' });
+    }
+
+    if (!restaurantName.trim() || !email.trim() || !password) {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
     }
 
-    const existingRestaurant = await Restaurant.findOne({ email });
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+
+    const existingRestaurant = await Restaurant.findOne({ email: email.trim().toLowerCase() });
     if (existingRestaurant) {
       return res.status(400).json({ success: false, message: 'Restaurant with this email already exists' });
     }
 
-    const slug = restaurantName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+    const slug = restaurantName.trim().toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+
+    const trialDays = parseInt(process.env.TRIAL_DAYS, 10) || 14;
+    const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
 
     const restaurant = await Restaurant.create({
-      name: restaurantName,
+      name: restaurantName.trim(),
       slug,
-      email,
+      email: email.trim().toLowerCase(),
       phone,
+      trialEndsAt,
     });
 
     const user = await User.create({
       restaurantId: restaurant._id,
-      name: restaurantName + ' Admin',
-      email,
+      name: restaurantName.trim() + ' Admin',
+      email: email.trim().toLowerCase(),
       password,
       role: 'restaurant-admin',
     });
@@ -65,11 +81,15 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ success: false, message: 'email and password must be strings' });
+    }
+
+    if (!email.trim() || !password) {
       return res.status(400).json({ success: false, message: 'Please provide email and password' });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
@@ -94,6 +114,13 @@ exports.login = async (req, res) => {
         return res.status(403).json({
           success: false,
           message: 'Your restaurant account has been suspended. Please contact support.',
+        });
+      }
+
+      if (restaurant.subscriptionStatus === 'cancelled') {
+        return res.status(403).json({
+          success: false,
+          message: 'Your restaurant subscription has been cancelled. Please contact support.',
         });
       }
 

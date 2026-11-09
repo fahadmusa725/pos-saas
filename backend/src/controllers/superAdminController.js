@@ -258,10 +258,10 @@ const resetAdminPassword = async (req, res) => {
   try {
     const { newPassword } = req.body;
 
-    if (!newPassword || newPassword.trim().length < 6) {
+    if (typeof newPassword !== 'string' || newPassword.trim().length < 8) {
       return res.status(400).json({
         success: false,
-        message: 'New password must be at least 6 characters long',
+        message: 'New password must be at least 8 characters long',
       });
     }
 

@@ -19,6 +19,12 @@ exports.setTenant = async (req, res, next) => {
               message: 'Your restaurant account has been suspended. Please contact support.',
             });
           }
+          if (restaurant.subscriptionStatus === 'cancelled') {
+            return res.status(403).json({
+              success: false,
+              message: 'Your restaurant subscription has been cancelled. Please contact support.',
+            });
+          }
           if (restaurant.subscriptionStatus === 'trial' && restaurant.trialEndsAt) {
             const trialEndDate = new Date(restaurant.trialEndsAt);
             if (trialEndDate < new Date()) {
