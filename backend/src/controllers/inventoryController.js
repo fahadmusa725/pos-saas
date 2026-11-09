@@ -102,7 +102,7 @@ const updateInventoryItem = async (req, res) => {
               break;
             }
           } else {
-            const otherInv = await InventoryItem.findById(ing.inventoryItemId);
+            const otherInv = await InventoryItem.findOne({ _id: ing.inventoryItemId, restaurantId: req.tenantId });
             if (!otherInv || otherInv.currentStock <= 0) {
               allInStock = false;
               break;
@@ -111,7 +111,10 @@ const updateInventoryItem = async (req, res) => {
         }
 
         if (mItem.isAvailable !== allInStock) {
-          await MenuItem.findByIdAndUpdate(mItem._id, { isAvailable: allInStock });
+          await MenuItem.findOneAndUpdate(
+            { _id: mItem._id, restaurantId: req.tenantId },
+            { isAvailable: allInStock }
+          );
         }
       }
     } catch (syncErr) {

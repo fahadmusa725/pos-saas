@@ -118,7 +118,7 @@ const updatePurchaseOrderStatus = async (req, res) => {
 
         let supplierName = '';
         if (order.supplierId) {
-          const supplier = await Supplier.findById(order.supplierId).select('name');
+          const supplier = await Supplier.findOne({ _id: order.supplierId, restaurantId: req.tenantId }).select('name');
           if (supplier) supplierName = supplier.name;
         }
 
@@ -168,7 +168,10 @@ const updatePurchaseOrderStatus = async (req, res) => {
           }
 
           if (allInStock) {
-            await MenuItem.findByIdAndUpdate(menuItem._id, { isAvailable: true });
+            await MenuItem.findOneAndUpdate(
+              { _id: menuItem._id, restaurantId: req.tenantId },
+              { isAvailable: true }
+            );
           }
         }
       } catch (reactivationErr) {
@@ -247,7 +250,7 @@ const payPurchaseOrder = async (req, res) => {
 
         let supplierName = '';
         if (order.supplierId) {
-          const supplier = await Supplier.findById(order.supplierId).select('name');
+          const supplier = await Supplier.findOne({ _id: order.supplierId, restaurantId: req.tenantId }).select('name');
           if (supplier) supplierName = supplier.name;
         }
 
@@ -290,7 +293,10 @@ const payPurchaseOrder = async (req, res) => {
           }
 
           if (allInStock) {
-            await MenuItem.findByIdAndUpdate(menuItem._id, { isAvailable: true });
+            await MenuItem.findOneAndUpdate(
+              { _id: menuItem._id, restaurantId: req.tenantId },
+              { isAvailable: true }
+            );
           }
         }
       } catch (reactivationErr) {

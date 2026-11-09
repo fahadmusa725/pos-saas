@@ -34,7 +34,7 @@ exports.createMenuItem = async (req, res) => {
       recipe: recipe || [],
     });
 
-    menuItem = await MenuItem.findById(menuItem._id)
+    menuItem = await MenuItem.findOne({ _id: menuItem._id, restaurantId: req.tenantId })
       .populate('categoryId', 'name')
       .populate('recipe.inventoryItemId', 'name unit currentStock reorderLevel');
 
@@ -133,7 +133,7 @@ exports.updateMenuItem = async (req, res) => {
 
     await menuItem.save();
 
-    const updatedItem = await MenuItem.findById(menuItem._id)
+    const updatedItem = await MenuItem.findOne({ _id: menuItem._id, restaurantId: req.tenantId })
       .populate('categoryId', 'name')
       .populate('recipe.inventoryItemId', 'name unit currentStock reorderLevel');
 

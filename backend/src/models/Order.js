@@ -77,6 +77,7 @@ const orderSchema = new mongoose.Schema(
     subtotal: { type: Number, required: true, default: 0 },
     tax: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
+    couponCode: { type: String, default: null, uppercase: true, trim: true },
     total: { type: Number, required: true, default: 0 },
     status: {
       type: String,
@@ -104,5 +105,8 @@ const orderSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Per-restaurant unique order numbers
+orderSchema.index({ restaurantId: 1, orderNumber: 1 }, { unique: true });
 
 module.exports = mongoose.model('Order', orderSchema);

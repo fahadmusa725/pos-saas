@@ -3,7 +3,67 @@ const Table = require('../models/Table');
 
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString().slice(-6);
-  return `ORD-${timestamp}`;
+  const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `ORD-${timestamp}${rand}`;
+};
+
+// Deliberate validation errors are reported as 400; anything else is an unexpected 500.
+const validationError = (message) => {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+};
+
+// Load MenuItem from DB, verify it belongs to this tenant and is available,
+// then compute the canonical price (base or variant) and validate add-ons.
+// Returns { dbItem, resolvedPrice, resolvedName, resolvedVariant, resolvedAddOns }
+const resolveMenuItemFromDB = async (item, restaurantId) => {
+  const MenuItem = require('../models/MenuItem');
+  const menuItemId = item.menuItemId || item._id;
+  if (!menuItemId) {
+    throw validationError('Each order item must have a menuItemId');
+  }
+
+  const dbItem = await MenuItem.findOne({ _id: menuItemId, restaurantId }).lean();
+  if (!dbItem) {
+    throw validationError(`Menu item not found or does not belong to this restaurant`);
+  }
+  if (dbItem.isAvailable === false) {
+    throw validationError(`"${dbItem.name}" is currently unavailable`);
+  }
+
+  let resolvedPrice;
+  let resolvedVariant = null;
+
+  if (item.variant) {
+    if (!dbItem.variants || dbItem.variants.length === 0) {
+      throw validationError(`"${dbItem.name}" has no variants`);
+    }
+    const foundVariant = dbItem.variants.find((v) => v.name === item.variant);
+    if (!foundVariant) {
+      throw validationError(`Variant "${item.variant}" not found on "${dbItem.name}"`);
+    }
+    resolvedPrice = foundVariant.price;
+    resolvedVariant = foundVariant.name;
+  } else {
+    resolvedPrice = dbItem.isSpecialDeal && dbItem.dealPrice != null
+      ? dbItem.dealPrice
+      : dbItem.price;
+  }
+
+  // Validate and resolve add-ons from DB definitions (reject unknown add-ons)
+  const resolvedAddOns = [];
+  if (item.addOns && item.addOns.length > 0) {
+    for (const clientAddOn of item.addOns) {
+      const dbAddOn = (dbItem.addOns || []).find((a) => a.name === clientAddOn.name);
+      if (!dbAddOn) {
+        throw validationError(`Add-on "${clientAddOn.name}" not found on "${dbItem.name}"`);
+      }
+      resolvedAddOns.push({ name: dbAddOn.name, price: dbAddOn.price });
+    }
+  }
+
+  return { dbItem, resolvedPrice, resolvedName: dbItem.name, resolvedVariant, resolvedAddOns };
 };
 
 const validateStockForItems = async (items, restaurantId) => {
@@ -16,6 +76,9 @@ const validateStockForItems = async (items, restaurantId) => {
     const menuItemId = item.menuItemId || item._id;
     if (!menuItemId) continue;
 
+    // items here already have resolvedVariant from resolveMenuItemFromDB
+    const variantName = item.resolvedVariant || item.variant;
+
     const menuItem = await MenuItem.findOne({
       _id: menuItemId,
       restaurantId,
@@ -24,8 +87,8 @@ const validateStockForItems = async (items, restaurantId) => {
     // ONLY check stock for menu items that have a non-empty recipe
     if (menuItem && menuItem.recipe && menuItem.recipe.length > 0) {
       let multiplier = 1;
-      if (item.variant && menuItem.variants && menuItem.variants.length > 0) {
-        const foundVariant = menuItem.variants.find((v) => v.name === item.variant);
+      if (variantName && menuItem.variants && menuItem.variants.length > 0) {
+        const foundVariant = menuItem.variants.find((v) => v.name === variantName);
         if (foundVariant && foundVariant.portionMultiplier) {
           multiplier = Number(foundVariant.portionMultiplier);
         }
@@ -47,11 +110,153 @@ const validateStockForItems = async (items, restaurantId) => {
     const invItem = await InventoryItem.findOne({ _id: invId, restaurantId });
     if (invItem && invItem.currentStock < totalRequired) {
       const avail = Math.max(0, invItem.currentStock);
-      throw new Error(
+      throw validationError(
         `Insufficient stock for ingredient: ${invItem.name}. Available: ${avail} ${invItem.unit || ''}, Required: ${totalRequired.toFixed(2)} ${invItem.unit || ''}`
       );
     }
   }
+};
+
+// Atomically deduct inventory for a list of processed order items.
+// Uses conditional update (currentStock >= required) per ingredient.
+// If any deduction fails, all already-applied deductions are rolled back.
+// Throws on failure so the caller can handle it.
+const deductInventoryForItems = async (processedItems, restaurantId) => {
+  const MenuItem = require('../models/MenuItem');
+  const InventoryItem = require('../models/InventoryItem');
+
+  // Collect all deductions: { inventoryItemId, amount }
+  const deductions = [];
+
+  for (const item of processedItems) {
+    const menuItemId = item.menuItemId || item._id;
+    if (!menuItemId) continue;
+
+    const menuItem = await MenuItem.findOne({
+      _id: menuItemId,
+      restaurantId,
+    }).select('recipe variants');
+
+    if (menuItem && menuItem.recipe && menuItem.recipe.length > 0) {
+      let multiplier = 1;
+      const variantName = item.variant;
+      if (variantName && menuItem.variants && menuItem.variants.length > 0) {
+        const foundVariant = menuItem.variants.find((v) => v.name === variantName);
+        if (foundVariant && foundVariant.portionMultiplier) {
+          multiplier = Number(foundVariant.portionMultiplier);
+        }
+      }
+
+      for (const ingredient of menuItem.recipe) {
+        if (!ingredient.inventoryItemId || !ingredient.quantityUsed) continue;
+        const amount = Number(ingredient.quantityUsed) * multiplier * (Number(item.quantity) || 1);
+        if (isNaN(amount) || amount <= 0) continue;
+
+        const existing = deductions.find((d) => d.inventoryItemId.toString() === ingredient.inventoryItemId.toString());
+        if (existing) {
+          existing.amount += amount;
+        } else {
+          deductions.push({ inventoryItemId: ingredient.inventoryItemId, amount });
+        }
+      }
+    }
+  }
+
+  // Apply deductions one-by-one; on failure roll back applied ones
+  const applied = [];
+  for (const { inventoryItemId, amount } of deductions) {
+    const updated = await InventoryItem.findOneAndUpdate(
+      { _id: inventoryItemId, restaurantId, currentStock: { $gte: amount } },
+      { $inc: { currentStock: -amount } },
+      { new: true }
+    );
+
+    if (!updated) {
+      // Roll back already-applied deductions
+      for (const rollback of applied) {
+        await InventoryItem.findOneAndUpdate(
+          { _id: rollback.inventoryItemId, restaurantId },
+          { $inc: { currentStock: rollback.amount } }
+        );
+      }
+      const failedItem = await InventoryItem.findOne({ _id: inventoryItemId, restaurantId });
+      const name = failedItem ? failedItem.name : inventoryItemId.toString();
+      throw validationError(`Insufficient stock for ingredient: ${name}`);
+    }
+
+    applied.push({ inventoryItemId, amount });
+
+    if (updated.currentStock <= 0) {
+      // Mark dependent menu items unavailable
+      await MenuItem.updateMany(
+        { restaurantId, isAvailable: true, 'recipe.inventoryItemId': inventoryItemId },
+        { $set: { isAvailable: false } }
+      );
+    }
+  }
+};
+
+// Restore inventory for a list of processed order items (used on cancellation and
+// to roll back a failed deduction). Restores are aggregated per ingredient and rolled
+// back if any update fails. Returns the applied restores so callers can undo them.
+const restoreInventoryForItems = async (processedItems, restaurantId) => {
+  const MenuItem = require('../models/MenuItem');
+  const InventoryItem = require('../models/InventoryItem');
+
+  const restores = [];
+
+  for (const item of processedItems) {
+    const menuItemId = item.menuItemId || item._id;
+    if (!menuItemId) continue;
+
+    const menuItem = await MenuItem.findOne({ _id: menuItemId, restaurantId }).select('recipe variants');
+    if (!menuItem || !menuItem.recipe || menuItem.recipe.length === 0) continue;
+
+    let multiplier = 1;
+    if (item.variant && menuItem.variants && menuItem.variants.length > 0) {
+      const foundVariant = menuItem.variants.find((v) => v.name === item.variant);
+      if (foundVariant && foundVariant.portionMultiplier) {
+        multiplier = Number(foundVariant.portionMultiplier);
+      }
+    }
+
+    for (const ingredient of menuItem.recipe) {
+      if (!ingredient.inventoryItemId || !ingredient.quantityUsed) continue;
+      const amount = Number(ingredient.quantityUsed) * multiplier * (Number(item.quantity) || 1);
+      if (isNaN(amount) || amount <= 0) continue;
+
+      const existing = restores.find((r) => r.inventoryItemId.toString() === ingredient.inventoryItemId.toString());
+      if (existing) {
+        existing.amount += amount;
+      } else {
+        restores.push({ inventoryItemId: ingredient.inventoryItemId, amount });
+      }
+    }
+  }
+
+  const applied = [];
+  for (const { inventoryItemId, amount } of restores) {
+    const updated = await InventoryItem.findOneAndUpdate(
+      { _id: inventoryItemId, restaurantId },
+      { $inc: { currentStock: amount } },
+      { new: true }
+    );
+
+    if (!updated) {
+      // Roll back already-applied restores
+      for (const rollback of applied) {
+        await InventoryItem.findOneAndUpdate(
+          { _id: rollback.inventoryItemId, restaurantId },
+          { $inc: { currentStock: -rollback.amount } }
+        );
+      }
+      throw new Error('Failed to restore inventory for the order');
+    }
+
+    applied.push({ inventoryItemId, amount });
+  }
+
+  return applied;
 };
 
 const deriveOrderStatusFromItems = (order) => {
@@ -81,44 +286,89 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'orderType and items are required' });
     }
 
-    // STRICT STOCK CHECK VALIDATION (only for items with recipes)
-    await validateStockForItems(items, req.tenantId);
+    // Validate and resolve all items from DB (price, name, variant, add-ons)
+    const resolvedItemMeta = [];
+    for (const item of items) {
+      const qty = Number(item.quantity);
+      if (!Number.isInteger(qty) || qty < 1) {
+        return res.status(400).json({ success: false, message: 'Item quantity must be a positive integer' });
+      }
+      const meta = await resolveMenuItemFromDB(item, req.tenantId);
+      resolvedItemMeta.push({ ...item, ...meta, quantity: qty });
+    }
+
+    // Validate tableId belongs to this tenant
+    if (tableId) {
+      const tableCheck = await Table.findOne({ _id: tableId, restaurantId: req.tenantId });
+      if (!tableCheck) {
+        return res.status(400).json({ success: false, message: 'Table not found or does not belong to this restaurant' });
+      }
+    }
+
+    // Validate customerId belongs to this tenant
+    if (customerId) {
+      const Customer = require('../models/Customer');
+      const customerCheck = await Customer.findOne({ _id: customerId, restaurantId: req.tenantId });
+      if (!customerCheck) {
+        return res.status(400).json({ success: false, message: 'Customer not found or does not belong to this restaurant' });
+      }
+    }
+
+    if (paymentMethod === 'credit' && !customerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'A customer must be selected to place a Credit / Udhar order.',
+      });
+    }
+
+    // Only restaurant-admin and manager can apply item-level discounts
+    const canApplyItemDiscount = ['restaurant-admin', 'manager'].includes(req.user.role);
+
+    // Stock check uses resolvedItemMeta (has resolvedVariant for multiplier)
+    await validateStockForItems(resolvedItemMeta, req.tenantId);
 
     let subtotal = 0;
-    const processedItems = items.map((item) => {
-      const baseItemPrice = Number(item.price);
-      const addOnsTotal = (item.addOns || []).reduce((sum, a) => sum + Number(a.price), 0);
-      const itemQuantity = Number(item.quantity) || 1;
+    const processedItems = resolvedItemMeta.map((item) => {
+      const { dbItem, resolvedPrice, resolvedName, resolvedVariant, resolvedAddOns, quantity } = item;
+      const addOnsTotal = resolvedAddOns.reduce((sum, a) => sum + a.price, 0);
 
       let itemDiscountAmount = 0;
-      if (item.itemDiscount && item.itemDiscount.value > 0) {
+      if (canApplyItemDiscount && item.itemDiscount && item.itemDiscount.value > 0) {
         const dType = item.itemDiscount.discountType;
         const dVal = Number(item.itemDiscount.value);
 
+        if (isNaN(dVal)) {
+          throw validationError(`Item discount value must be a number for "${resolvedName}"`);
+        }
+
         if (dType === 'percentage') {
           if (dVal < 0 || dVal > 100) {
-            throw new Error(`Item percentage discount must be between 0% and 100% for ${item.name}`);
+            throw validationError(`Item percentage discount must be between 0% and 100% for "${resolvedName}"`);
           }
-          itemDiscountAmount = (baseItemPrice * (dVal / 100)) * itemQuantity;
+          itemDiscountAmount = (resolvedPrice * (dVal / 100)) * quantity;
         } else if (dType === 'fixed') {
           if (dVal < 0) {
-            throw new Error(`Item fixed discount cannot be negative for ${item.name}`);
+            throw new Error(`Item fixed discount cannot be negative for "${resolvedName}"`);
           }
-          const fixedPerUnit = Math.min(dVal, baseItemPrice);
-          itemDiscountAmount = fixedPerUnit * itemQuantity;
+          const fixedPerUnit = Math.min(dVal, resolvedPrice);
+          itemDiscountAmount = fixedPerUnit * quantity;
         }
       }
 
-      const rawItemTotal = (baseItemPrice + addOnsTotal) * itemQuantity;
+      const rawItemTotal = (resolvedPrice + addOnsTotal) * quantity;
       const netItemTotal = Math.max(0, rawItemTotal - itemDiscountAmount);
       subtotal += netItemTotal;
 
       return {
-        ...item,
-        price: baseItemPrice,
-        quantity: itemQuantity,
+        menuItemId: dbItem._id,
+        name: resolvedName,
+        price: resolvedPrice,
+        quantity,
+        variant: resolvedVariant || undefined,
+        addOns: resolvedAddOns,
+        notes: item.notes || '',
         round: 1,
-        itemDiscount: item.itemDiscount || { value: 0 },
+        itemDiscount: canApplyItemDiscount && item.itemDiscount ? item.itemDiscount : { value: 0 },
       };
     });
 
@@ -126,7 +376,7 @@ exports.createOrder = async (req, res) => {
     const restaurant = await Restaurant.findById(req.tenantId);
     const restaurantTaxRate = Number(restaurant?.taxRate) || 0;
     const taxAmount = Math.round(subtotal * (restaurantTaxRate / 100));
-    let finalCouponDiscount = Number(discount) || 0;
+    let finalCouponDiscount = 0;
 
     // Server-side Coupon Re-validation Guard
     if (couponCode) {
@@ -148,113 +398,80 @@ exports.createOrder = async (req, res) => {
     const rawTotal = subtotal + taxAmount - finalCouponDiscount;
     const total = Math.max(0, rawTotal);
 
-    if (paymentMethod === 'credit') {
-      if (!customerId) {
-        return res.status(400).json({
-          success: false,
-          message: 'A customer must be selected to place a Credit / Udhar order.',
-        });
-      }
-    }
+    // Persist the validated coupon code so addItemsToOrder can recompute the discount
+    const finalCouponCode = couponCode ? couponCode.trim().toUpperCase() : null;
 
+    // For credit orders, paymentBreakdown records the amount owed;
+    // creditBalance is incremented here (once) since the item is taken on credit now.
     const initialPaymentBreakdown = paymentMethod === 'credit'
       ? [{ method: 'credit', amount: total, paidAt: new Date() }]
       : [];
 
-    const order = await Order.create({
-      restaurantId: req.tenantId,
-      orderNumber: generateOrderNumber(),
-      orderType,
-      tableId: tableId || null,
-      customerId: customerId || null,
-      items: processedItems,
-      subtotal,
-      tax: taxAmount,
-      discount: finalCouponDiscount,
-      total,
-      paymentMethod: paymentMethod || 'cash',
-      paymentStatus: 'unpaid',
-      paymentBreakdown: initialPaymentBreakdown,
-      status: paymentMethod === 'credit' ? 'completed' : 'pending',
-      isHeld: Boolean(isHeld),
-      createdBy: req.user._id,
-    });
+    // Deduct stock first: if it fails, no order, credit increment or table change is persisted
+    await deductInventoryForItems(processedItems, req.tenantId);
 
+    let order;
+    try {
+      order = await (async () => {
+        // Retry up to 3 times on duplicate orderNumber (compound unique index)
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            return await Order.create({
+              restaurantId: req.tenantId,
+              orderNumber: generateOrderNumber(),
+              orderType,
+              tableId: tableId || null,
+              customerId: customerId || null,
+              items: processedItems,
+              subtotal,
+              tax: taxAmount,
+              discount: finalCouponDiscount,
+              couponCode: finalCouponCode,
+              total,
+              paymentMethod: paymentMethod || 'cash',
+              paymentStatus: 'unpaid',
+              paymentBreakdown: initialPaymentBreakdown,
+              status: paymentMethod === 'credit' ? 'completed' : 'pending',
+              isHeld: Boolean(isHeld),
+              createdBy: req.user._id,
+            });
+          } catch (err) {
+            if (err.code === 11000 && attempt < 2) continue;
+            throw err;
+          }
+        }
+      })();
+    } catch (createErr) {
+      // Undo the deduction so a failed create leaves no stock side effect
+      await restoreInventoryForItems(processedItems, req.tenantId);
+      throw createErr;
+    }
+
+    // Credit balance incremented exactly once at order creation for credit orders
     if (paymentMethod === 'credit' && customerId) {
       const Customer = require('../models/Customer');
-      await Customer.findByIdAndUpdate(customerId, {
-        $inc: { creditBalance: total },
-      });
+      await Customer.findOneAndUpdate(
+        { _id: customerId, restaurantId: req.tenantId },
+        { $inc: { creditBalance: total } }
+      );
     }
 
     if (orderType === 'dine-in' && tableId) {
-      await Table.findByIdAndUpdate(tableId, { status: 'occupied' });
-    }
-
-    try {
-      const MenuItem = require('../models/MenuItem');
-      const InventoryItem = require('../models/InventoryItem');
-
-      const depletedInventoryIds = new Set();
-
-      for (const item of processedItems) {
-        const menuItemId = item.menuItemId || item._id;
-        if (!menuItemId) continue;
-
-        const menuItem = await MenuItem.findOne({
-          _id: menuItemId,
-          restaurantId: req.tenantId,
-        }).select('recipe variants');
-
-        if (menuItem && menuItem.recipe && menuItem.recipe.length > 0) {
-          let multiplier = 1;
-          const variantName = item.variantName || item.variant;
-          if (variantName && menuItem.variants && menuItem.variants.length > 0) {
-            const foundVariant = menuItem.variants.find((v) => v.name === variantName);
-            if (foundVariant && foundVariant.portionMultiplier) {
-              multiplier = Number(foundVariant.portionMultiplier);
-            }
-          }
-
-          for (const ingredient of menuItem.recipe) {
-            if (!ingredient.inventoryItemId || !ingredient.quantityUsed) continue;
-            const totalDeduction = Number(ingredient.quantityUsed) * multiplier * (Number(item.quantity) || 1);
-            if (isNaN(totalDeduction) || totalDeduction <= 0) continue;
-
-            const updatedInv = await InventoryItem.findOneAndUpdate(
-              { _id: ingredient.inventoryItemId, restaurantId: req.tenantId },
-              { $inc: { currentStock: -totalDeduction } },
-              { new: true }
-            );
-
-            if (updatedInv && updatedInv.currentStock <= 0) {
-              depletedInventoryIds.add(ingredient.inventoryItemId.toString());
-            }
-          }
-        }
-      }
-
-      if (depletedInventoryIds.size > 0) {
-        const depletedArray = Array.from(depletedInventoryIds);
-        const affectedMenuItems = await MenuItem.find({
-          restaurantId: req.tenantId,
-          isAvailable: true,
-          'recipe.inventoryItemId': { $in: depletedArray },
-        });
-
-        for (const mItem of affectedMenuItems) {
-          await MenuItem.findByIdAndUpdate(mItem._id, { isAvailable: false });
-        }
-      }
-    } catch (recipeErr) {
-      console.error('Silent inventory deduction/deactivation error:', recipeErr.message);
+      await Table.findOneAndUpdate(
+        { _id: tableId, restaurantId: req.tenantId },
+        { status: 'occupied' }
+      );
     }
 
     req.io.to(req.tenantId.toString()).emit('newOrder', order);
 
     res.status(201).json({ success: true, data: order });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    if (error.statusCode === 400) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    console.error('Create order error:', error);
+    return res.status(500).json({ success: false, message: 'Something went wrong while creating the order' });
   }
 };
 
@@ -332,43 +549,158 @@ exports.updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
 
+    // Validate status is a known value
+    const VALID_STATUSES = ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'];
+    if (!VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid order status' });
+    }
+
     const order = await Order.findOne({ _id: req.params.id, restaurantId: req.tenantId });
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Final Status Guard: Cannot change status of an already completed or cancelled order
-    if (['completed', 'cancelled'].includes(order.status)) {
-      return res.status(400).json({
+    // Role-based status transition restrictions
+    const role = req.user.role;
+
+    // Kitchen staff: can only move to preparing or ready; cannot complete or cancel
+    if (role === 'kitchen' && ['completed', 'cancelled'].includes(status)) {
+      return res.status(403).json({
         success: false,
-        message: `Order is already ${order.status} and cannot be modified.`,
+        message: 'Kitchen staff cannot complete or cancel orders',
       });
     }
 
-    // Cancellation Guard: Cannot cancel a ready or completed order
-    if (status === 'cancelled' && ['ready', 'completed'].includes(order.status)) {
-      return res.status(400).json({
+    // Waiter: cannot cancel orders
+    if (role === 'waiter' && status === 'cancelled') {
+      return res.status(403).json({
         success: false,
-        message: 'Cannot cancel an order that is already Ready or Completed',
+        message: 'Waiters cannot cancel orders',
       });
     }
 
-    order.status = status;
-    await order.save();
-
-    if ((status === 'cancelled' || (status === 'completed' && order.paymentStatus === 'paid')) && order.tableId) {
-      await Table.findByIdAndUpdate(order.tableId, { status: 'available' });
+    // Final Status Guard: a cancelled order is final. A completed order can only be
+    // cancelled, and only by a restaurant admin or manager (e.g. reversing a credit order).
+    if (order.status === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: 'Order is already cancelled and cannot be modified.',
+      });
     }
 
-    req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
+    if (order.status === 'completed') {
+      if (status !== 'cancelled') {
+        return res.status(400).json({
+          success: false,
+          message: 'Order is already completed and cannot be modified.',
+        });
+      }
+      if (!['restaurant-admin', 'manager'].includes(role)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only a restaurant admin or manager can cancel a completed order',
+        });
+      }
+    }
+
+    // Cancellation Guard: Cannot cancel an order that is already Ready
+    if (status === 'cancelled' && order.status === 'ready') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel an order that is already Ready',
+      });
+    }
+
+    const previousStatus = order.status;
+
+    // Cancellation side effects run before the status is persisted: if any of them
+    // fails, the order stays unchanged and the error is reported to the caller.
+    let appliedRestore = [];
+    let reversedCredit = 0;
+
+    const rollbackSideEffects = async () => {
+      const InventoryItem = require('../models/InventoryItem');
+      for (const applied of appliedRestore) {
+        await InventoryItem.findOneAndUpdate(
+          { _id: applied.inventoryItemId, restaurantId: req.tenantId },
+          { $inc: { currentStock: -applied.amount } }
+        );
+      }
+      if (reversedCredit > 0 && order.customerId) {
+        const Customer = require('../models/Customer');
+        await Customer.findOneAndUpdate(
+          { _id: order.customerId, restaurantId: req.tenantId },
+          { $inc: { creditBalance: reversedCredit } }
+        );
+      }
+    };
+
+    if (status === 'cancelled') {
+      try {
+        appliedRestore = await restoreInventoryForItems(order.items, req.tenantId);
+
+        // Reverse the full credit amount this order added to the customer's balance
+        if (order.customerId) {
+          const Customer = require('../models/Customer');
+          const creditAmount = (order.paymentBreakdown || [])
+            .filter((p) => p.method === 'credit')
+            .reduce((sum, p) => sum + p.amount, 0);
+          if (creditAmount > 0) {
+            const updatedCustomer = await Customer.findOneAndUpdate(
+              { _id: order.customerId, restaurantId: req.tenantId },
+              { $inc: { creditBalance: -creditAmount } },
+              { new: true }
+            );
+            if (!updatedCustomer) {
+              throw new Error('Customer not found while reversing credit');
+            }
+            reversedCredit = creditAmount;
+          }
+        }
+      } catch (cancelErr) {
+        await rollbackSideEffects();
+        throw cancelErr;
+      }
+    }
+
+    let updatedOrder;
+    try {
+      // Conditional update keeps cancellation and its side effects exactly-once
+      updatedOrder = await Order.findOneAndUpdate(
+        { _id: order._id, restaurantId: req.tenantId, status: previousStatus },
+        { $set: { status } },
+        { new: true }
+      );
+    } catch (saveErr) {
+      await rollbackSideEffects();
+      throw saveErr;
+    }
+
+    if (!updatedOrder) {
+      await rollbackSideEffects();
+      return res.status(400).json({
+        success: false,
+        message: 'Order status was changed by another request, please retry',
+      });
+    }
+
+    if ((status === 'cancelled' || (status === 'completed' && updatedOrder.paymentStatus === 'paid')) && updatedOrder.tableId) {
+      await Table.findOneAndUpdate(
+        { _id: updatedOrder.tableId, restaurantId: req.tenantId },
+        { status: 'available' }
+      );
+    }
+
+    req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', updatedOrder);
     if (['completed', 'cancelled'].includes(status)) {
-      req.io.to(req.tenantId.toString()).emit('orderCompleted', order);
+      req.io.to(req.tenantId.toString()).emit('orderCompleted', updatedOrder);
     }
 
-    res.status(200).json({ success: true, data: order });
+    res.status(200).json({ success: true, data: updatedOrder });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Update order status error:', error);
+    return res.status(500).json({ success: false, message: 'Something went wrong while updating the order status' });
   }
 };
 
@@ -418,6 +750,24 @@ exports.markAsPaid = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
+    // Reject already finalized orders
+    if (order.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Cannot process payment on a cancelled order' });
+    }
+    if (order.status === 'completed' && order.paymentStatus === 'paid') {
+      return res.status(400).json({ success: false, message: 'Order is already fully paid' });
+    }
+
+    // A completed order whose recorded payments already cover the total must not
+    // accept another payment (e.g. a 100% credit order created as completed).
+    const totalRecorded = (order.paymentBreakdown || []).reduce((sum, p) => sum + p.amount, 0);
+    if (order.status === 'completed' && totalRecorded >= order.total) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment for this order is already fully recorded',
+      });
+    }
+
     // If couponCode is provided during payment, re-validate & update order discount & total on server
     if (couponCode && order.paymentStatus === 'unpaid') {
       const Coupon = require('../models/Coupon');
@@ -435,10 +785,18 @@ exports.markAsPaid = async (req, res) => {
       const verifiedDiscount = calculateCouponDiscount(coupon, order.subtotal);
       order.discount = verifiedDiscount;
       order.total = Math.max(0, order.subtotal + order.tax - verifiedDiscount);
+      order.couponCode = coupon.code;
     }
 
-    // Save customerId FIRST if passed in request body (for any payment method including credit, cash, card, online)
-    if (req.body.customerId) {
+    // A customer can only be attached once: ignore a body customerId when the order
+    // already has a customer or already recorded a credit payment.
+    const hasCreditEntry = (order.paymentBreakdown || []).some((p) => p.method === 'credit');
+    if (req.body.customerId && !order.customerId && !hasCreditEntry) {
+      const Customer = require('../models/Customer');
+      const customerCheck = await Customer.findOne({ _id: req.body.customerId, restaurantId: req.tenantId });
+      if (!customerCheck) {
+        return res.status(400).json({ success: false, message: 'Customer not found or does not belong to this restaurant' });
+      }
       order.customerId = req.body.customerId;
     }
 
@@ -449,17 +807,14 @@ exports.markAsPaid = async (req, res) => {
       newPayments = [{ method, amount: order.total }];
     }
 
-    let creditAmountTotal = 0;
+    let newCreditAmountTotal = 0;
     const hasCreditPayment = newPayments.some((p) => p.method === 'credit');
 
-    if (hasCreditPayment) {
-      const custId = order.customerId || req.body.customerId;
-      if (!custId) {
-        return res.status(400).json({
-          success: false,
-          message: 'A customer must be selected to record a Credit / Udhar order.',
-        });
-      }
+    if (hasCreditPayment && !order.customerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'A customer must be selected to record a Credit / Udhar order.',
+      });
     }
 
     // Validate overpayment: non-cash methods (card, online, credit) cannot exceed remaining balance
@@ -467,16 +822,17 @@ exports.markAsPaid = async (req, res) => {
     let totalNewPaymentAmount = 0;
     let nonCashPaymentTotal = 0;
 
-    for (let p of newPayments) {
-      if (!p.method || !p.amount || Number(p.amount) <= 0) {
+    for (const p of newPayments) {
+      const pAmount = Number(p.amount);
+      if (!p.method || !isFinite(pAmount) || pAmount <= 0) {
         return res.status(400).json({ success: false, message: 'Invalid payment amount or method' });
       }
-      totalNewPaymentAmount += Number(p.amount);
+      totalNewPaymentAmount += pAmount;
       if (p.method !== 'cash') {
-        nonCashPaymentTotal += Number(p.amount);
+        nonCashPaymentTotal += pAmount;
       }
       if (p.method === 'credit') {
-        creditAmountTotal += Number(p.amount);
+        newCreditAmountTotal += pAmount;
       }
     }
 
@@ -487,11 +843,13 @@ exports.markAsPaid = async (req, res) => {
       });
     }
 
-    if (creditAmountTotal > 0 && order.customerId) {
+    // Increment the customer's credit balance for the new credit payment
+    if (newCreditAmountTotal > 0 && order.customerId) {
       const Customer = require('../models/Customer');
-      await Customer.findByIdAndUpdate(order.customerId, {
-        $inc: { creditBalance: creditAmountTotal },
-      });
+      await Customer.findOneAndUpdate(
+        { _id: order.customerId, restaurantId: req.tenantId },
+        { $inc: { creditBalance: newCreditAmountTotal } }
+      );
     }
 
     order.paymentBreakdown = order.paymentBreakdown || [];
@@ -525,7 +883,10 @@ exports.markAsPaid = async (req, res) => {
       order.amountPaid = realMoneyPaid;
 
       if (order.tableId) {
-        await Table.findByIdAndUpdate(order.tableId, { status: 'available' });
+        await Table.findOneAndUpdate(
+          { _id: order.tableId, restaurantId: req.tenantId },
+          { status: 'available' }
+        );
       }
     } else if (totalCovered > 0) {
       order.paymentStatus = 'partially_paid';
@@ -573,45 +934,61 @@ exports.addItemsToOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cannot add items to a completed or paid order' });
     }
 
-    await validateStockForItems(items, req.tenantId);
+    // Validate and resolve all items from DB (price, name, variant, add-ons)
+    const resolvedItemMeta = [];
+    for (const item of items) {
+      const qty = Number(item.quantity);
+      if (!Number.isInteger(qty) || qty < 1) {
+        return res.status(400).json({ success: false, message: 'Item quantity must be a positive integer' });
+      }
+      const meta = await resolveMenuItemFromDB(item, req.tenantId);
+      resolvedItemMeta.push({ ...item, ...meta, quantity: qty });
+    }
+
+    await validateStockForItems(resolvedItemMeta, req.tenantId);
 
     const maxExistingRound = (order.items || []).reduce((max, i) => Math.max(max, i.round || 1), 1);
     const nextRound = maxExistingRound + 1;
 
+    const canApplyItemDiscount = ['restaurant-admin', 'manager'].includes(req.user.role);
+
     let addedSubtotal = 0;
-    const newProcessedItems = items.map((item) => {
-      const baseItemPrice = Number(item.price);
-      const addOnsTotal = (item.addOns || []).reduce((sum, a) => sum + Number(a.price), 0);
-      const itemQuantity = Number(item.quantity) || 1;
+    const newProcessedItems = resolvedItemMeta.map((item) => {
+      const { dbItem, resolvedPrice, resolvedName, resolvedVariant, resolvedAddOns, quantity } = item;
+      const addOnsTotal = resolvedAddOns.reduce((sum, a) => sum + a.price, 0);
 
       let itemDiscountAmount = 0;
-      if (item.itemDiscount && item.itemDiscount.value > 0) {
+      if (canApplyItemDiscount && item.itemDiscount && item.itemDiscount.value > 0) {
         const dType = item.itemDiscount.discountType;
         const dVal = Number(item.itemDiscount.value);
-        if (dType === 'percentage') {
-          itemDiscountAmount = (baseItemPrice * (dVal / 100)) * itemQuantity;
-        } else if (dType === 'fixed') {
-          const fixedPerUnit = Math.min(dVal, baseItemPrice);
-          itemDiscountAmount = fixedPerUnit * itemQuantity;
+        if (!isNaN(dVal)) {
+          if (dType === 'percentage') {
+            itemDiscountAmount = (resolvedPrice * (Math.min(Math.max(dVal, 0), 100) / 100)) * quantity;
+          } else if (dType === 'fixed') {
+            const fixedPerUnit = Math.min(Math.max(dVal, 0), resolvedPrice);
+            itemDiscountAmount = fixedPerUnit * quantity;
+          }
         }
       }
 
-      const rawItemTotal = (baseItemPrice + addOnsTotal) * itemQuantity;
+      const rawItemTotal = (resolvedPrice + addOnsTotal) * quantity;
       const netItemTotal = Math.max(0, rawItemTotal - itemDiscountAmount);
       addedSubtotal += netItemTotal;
 
       return {
-        ...item,
-        price: baseItemPrice,
-        quantity: itemQuantity,
+        menuItemId: dbItem._id,
+        name: resolvedName,
+        price: resolvedPrice,
+        quantity,
+        variant: resolvedVariant || undefined,
+        addOns: resolvedAddOns,
+        notes: item.notes || '',
         status: 'pending',
         round: nextRound,
         addedAt: new Date(),
-        itemDiscount: item.itemDiscount || { value: 0 },
+        itemDiscount: canApplyItemDiscount && item.itemDiscount ? item.itemDiscount : { value: 0 },
       };
     });
-
-    order.items.push(...newProcessedItems);
 
     const Restaurant = require('../models/Restaurant');
     const restaurant = await Restaurant.findById(req.tenantId);
@@ -619,72 +996,44 @@ exports.addItemsToOrder = async (req, res) => {
 
     order.subtotal = (order.subtotal || 0) + addedSubtotal;
     order.tax = Math.round(order.subtotal * (restaurantTaxRate / 100));
-    const rawTotal = order.subtotal + order.tax - (order.discount || 0);
+
+    // Recompute coupon discount after subtotal changes
+    let recomputedCouponDiscount = order.discount || 0;
+    if (order.couponCode) {
+      try {
+        const Coupon = require('../models/Coupon');
+        const { calculateCouponDiscount } = require('./couponController');
+        const coupon = await Coupon.findOne({
+          restaurantId: req.tenantId,
+          code: order.couponCode,
+        });
+        if (coupon) {
+          recomputedCouponDiscount = calculateCouponDiscount(coupon, order.subtotal);
+        }
+      } catch (couponErr) {
+        // Keep existing discount if coupon lookup fails
+      }
+    }
+    order.discount = recomputedCouponDiscount;
+
+    const rawTotal = order.subtotal + order.tax - order.discount;
     order.total = Math.max(0, rawTotal);
 
     if (order.status === 'ready' || order.status === 'preparing') {
       order.status = 'pending';
     }
 
-    await order.save();
+    // Deduct stock before persisting: if it fails, the order stays untouched
+    await deductInventoryForItems(newProcessedItems, req.tenantId);
+
+    order.items.push(...newProcessedItems);
 
     try {
-      const MenuItem = require('../models/MenuItem');
-      const InventoryItem = require('../models/InventoryItem');
-
-      const depletedInventoryIds = new Set();
-
-      for (const item of newProcessedItems) {
-        const menuItemId = item.menuItemId || item._id;
-        if (!menuItemId) continue;
-
-        const menuItem = await MenuItem.findOne({
-          _id: menuItemId,
-          restaurantId: req.tenantId,
-        }).select('recipe variants');
-
-        if (menuItem && menuItem.recipe && menuItem.recipe.length > 0) {
-          let multiplier = 1;
-          const variantName = item.variantName || item.variant;
-          if (variantName && menuItem.variants && menuItem.variants.length > 0) {
-            const foundVariant = menuItem.variants.find((v) => v.name === variantName);
-            if (foundVariant && foundVariant.portionMultiplier) {
-              multiplier = Number(foundVariant.portionMultiplier);
-            }
-          }
-
-          for (const ingredient of menuItem.recipe) {
-            if (!ingredient.inventoryItemId || !ingredient.quantityUsed) continue;
-            const totalDeduction = Number(ingredient.quantityUsed) * multiplier * (Number(item.quantity) || 1);
-            if (isNaN(totalDeduction) || totalDeduction <= 0) continue;
-
-            const updatedInv = await InventoryItem.findOneAndUpdate(
-              { _id: ingredient.inventoryItemId, restaurantId: req.tenantId },
-              { $inc: { currentStock: -totalDeduction } },
-              { new: true }
-            );
-
-            if (updatedInv && updatedInv.currentStock <= 0) {
-              depletedInventoryIds.add(ingredient.inventoryItemId.toString());
-            }
-          }
-        }
-      }
-
-      if (depletedInventoryIds.size > 0) {
-        const depletedArray = Array.from(depletedInventoryIds);
-        const affectedMenuItems = await MenuItem.find({
-          restaurantId: req.tenantId,
-          isAvailable: true,
-          'recipe.inventoryItemId': { $in: depletedArray },
-        });
-
-        for (const mItem of affectedMenuItems) {
-          await MenuItem.findByIdAndUpdate(mItem._id, { isAvailable: false });
-        }
-      }
-    } catch (recipeErr) {
-      console.error('Silent inventory deduction error on add items:', recipeErr.message);
+      await order.save();
+    } catch (saveErr) {
+      // Undo the deduction so a failed save leaves no stock side effect
+      await restoreInventoryForItems(newProcessedItems, req.tenantId);
+      throw saveErr;
     }
 
     req.io.to(req.tenantId.toString()).emit('newOrder', order);
