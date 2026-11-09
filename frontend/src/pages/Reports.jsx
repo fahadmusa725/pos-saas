@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import formatMoney from '../utils/formatMoney';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend
@@ -235,7 +236,7 @@ function Reports() {
                     TOTAL SALES REVENUE
                   </span>
                   <p className="text-2xl font-extrabold text-amber-500 mt-2">
-                    PKR {(financialData.totalSalesRevenue || 0).toLocaleString()}
+                    PKR {formatMoney(financialData.totalSalesRevenue)}
                   </p>
                   <p className="text-[11px] text-neutral-500 mt-1">
                     From {financialData.totalOrders || 0} completed orders
@@ -247,7 +248,7 @@ function Reports() {
                     TOTAL CASH SALES
                   </span>
                   <p className="text-2xl font-extrabold text-emerald-400 mt-2">
-                    PKR {(financialData.totalCashSales || 0).toLocaleString()}
+                    PKR {formatMoney(financialData.totalCashSales)}
                   </p>
                   <p className="text-[11px] text-neutral-500 mt-1">Direct cash method transactions</p>
                 </div>
@@ -257,7 +258,7 @@ function Reports() {
                     ACCOUNTS RECEIVABLE
                   </span>
                   <p className="text-2xl font-extrabold text-sky-400 mt-2">
-                    PKR {(financialData.accountsReceivable || 0).toLocaleString()}
+                    PKR {formatMoney(financialData.accountsReceivable)}
                   </p>
                   <p className="text-[11px] text-neutral-500 mt-1">Customer credit balances owed</p>
                 </div>
@@ -271,7 +272,7 @@ function Reports() {
                       financialData.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-500'
                     }`}
                   >
-                    PKR {(financialData.netProfit || 0).toLocaleString()}
+                    PKR {formatMoney(financialData.netProfit)}
                   </p>
                   <p className="text-[11px] text-neutral-500 mt-1">Revenue minus operational expenses</p>
                 </div>
@@ -300,21 +301,21 @@ function Reports() {
                           All completed sales transactions
                         </td>
                         <td className="py-3.5 px-5 text-right text-amber-500 font-extrabold">
-                          PKR {(financialData.totalSalesRevenue || 0).toLocaleString()}
+                          PKR {formatMoney(financialData.totalSalesRevenue)}
                         </td>
                       </tr>
                       <tr className="text-neutral-300">
                         <td className="py-3 px-5 pl-9 text-emerald-400 font-medium">├ Total Cash Sales</td>
                         <td className="py-3 px-5 text-neutral-500">Direct cash paid by customers</td>
                         <td className="py-3 px-5 text-right text-emerald-400 font-semibold">
-                          PKR {(financialData.totalCashSales || 0).toLocaleString()}
+                          PKR {formatMoney(financialData.totalCashSales)}
                         </td>
                       </tr>
                       <tr className="text-neutral-300">
                         <td className="py-3 px-5 pl-9 text-sky-400 font-medium">├ Customer Credit Tabs</td>
                         <td className="py-3 px-5 text-neutral-500">Sales issued on credit (receivables)</td>
                         <td className="py-3 px-5 text-right text-sky-400 font-semibold">
-                          PKR {(financialData.creditSales || 0).toLocaleString()}
+                          PKR {formatMoney(financialData.creditSales)}
                         </td>
                       </tr>
                       <tr className="text-neutral-300">
@@ -325,7 +326,7 @@ function Reports() {
                           Cash received settling old customer credit tabs
                         </td>
                         <td className="py-3 px-5 text-right text-emerald-400 font-semibold">
-                          +PKR {(financialData.creditSales || 0).toLocaleString()}
+                          +PKR {formatMoney(financialData.creditSales)}
                         </td>
                       </tr>
                       <tr className="text-neutral-300">
@@ -334,7 +335,7 @@ function Reports() {
                           Utilities, salaries, rent, PO purchases & misc expenses
                         </td>
                         <td className="py-3 px-5 text-right text-rose-500 font-semibold">
-                          -PKR {(financialData.totalExpenses || 0).toLocaleString()}
+                          -PKR {formatMoney(financialData.totalExpenses)}
                         </td>
                       </tr>
                       <tr className="bg-neutral-950/80 font-extrabold text-amber-400">
@@ -343,7 +344,7 @@ function Reports() {
                           Cash Sales + Credit Collected – Cash Expenses
                         </td>
                         <td className="py-4 px-5 text-right text-amber-400 text-sm">
-                          PKR {(financialData.cashInRegister || 0).toLocaleString()}
+                          PKR {formatMoney(financialData.cashInRegister)}
                         </td>
                       </tr>
                     </tbody>
@@ -411,7 +412,7 @@ function Reports() {
                     TOTAL CASH SALES
                   </span>
                   <p className="text-2xl font-extrabold text-emerald-400 mt-2">
-                    PKR {(financialData.totalCashSales || 0).toLocaleString()}
+                    PKR {formatMoney(financialData.totalCashSales)}
                   </p>
                   <p className="text-[11px] text-neutral-500 mt-1">Direct Cash Paid</p>
                 </div>
@@ -420,7 +421,7 @@ function Reports() {
                     ACCOUNTS RECEIVABLE
                   </span>
                   <p className="text-2xl font-extrabold text-sky-400 mt-2">
-                    PKR {(financialData.accountsReceivable || 0).toLocaleString()}
+                    PKR {formatMoney(financialData.accountsReceivable)}
                   </p>
                   <p className="text-[11px] text-neutral-500 mt-1">Total customer credit owed</p>
                 </div>
@@ -429,7 +430,7 @@ function Reports() {
                     TOTAL EXPENSES LOGGED
                   </span>
                   <p className="text-2xl font-extrabold text-rose-500 mt-2">
-                    PKR {(financialData.totalExpenses || 0).toLocaleString()}
+                    PKR {formatMoney(financialData.totalExpenses)}
                   </p>
                   <p className="text-[11px] text-neutral-500 mt-1">Rent, utilities, supplies, salaries</p>
                 </div>
@@ -438,7 +439,7 @@ function Reports() {
                     ACCOUNTS PAYABLE
                   </span>
                   <p className="text-2xl font-extrabold text-purple-400 mt-2">
-                    PKR {(financialData.accountsPayable || 0).toLocaleString()}
+                    PKR {formatMoney(financialData.accountsPayable)}
                   </p>
                   <p className="text-[11px] text-neutral-500 mt-1">Unpaid supplier purchase orders</p>
                 </div>
@@ -464,42 +465,42 @@ function Reports() {
                         <td className="py-3.5 px-5">Total Sales Revenue</td>
                         <td className="py-3.5 px-5 text-neutral-400 font-normal">All completed customer orders</td>
                         <td className="py-3.5 px-5 text-right text-amber-500 font-extrabold">
-                          PKR {(financialData.totalSalesRevenue || 0).toLocaleString()}
+                          PKR {formatMoney(financialData.totalSalesRevenue)}
                         </td>
                       </tr>
                       <tr>
                         <td className="py-3 px-5 pl-9 text-emerald-400 font-medium">├ Cash Direct Sales</td>
                         <td className="py-3 px-5 text-neutral-500">Direct cash paid by customers at counter</td>
                         <td className="py-3 px-5 text-right text-emerald-400">
-                          PKR {(financialData.totalCashSales || 0).toLocaleString()}
+                          PKR {formatMoney(financialData.totalCashSales)}
                         </td>
                       </tr>
                       <tr>
                         <td className="py-3 px-5 pl-9 text-sky-400 font-medium">├ Customer Credit Sales</td>
                         <td className="py-3 px-5 text-neutral-500">Sales given on credit tab (receivables)</td>
                         <td className="py-3 px-5 text-right text-sky-400">
-                          PKR {(financialData.creditSales || 0).toLocaleString()}
+                          PKR {formatMoney(financialData.creditSales)}
                         </td>
                       </tr>
                       <tr>
                         <td className="py-3 px-5 pl-9 text-purple-400 font-medium">├ Card / Digital Sales</td>
                         <td className="py-3 px-5 text-neutral-500">Card payments processed directly to bank</td>
                         <td className="py-3 px-5 text-right text-purple-400">
-                          PKR {(financialData.cardSales || 0).toLocaleString()}
+                          PKR {formatMoney(financialData.cardSales)}
                         </td>
                       </tr>
                       <tr>
                         <td className="py-3 px-5 text-emerald-400 font-semibold">Customer Credit Collections</td>
                         <td className="py-3 px-5 text-neutral-500">Cash received settling old customer credit tabs</td>
                         <td className="py-3 px-5 text-right text-emerald-400 font-semibold">
-                          +PKR {(financialData.creditSales || 0).toLocaleString()}
+                          +PKR {formatMoney(financialData.creditSales)}
                         </td>
                       </tr>
                       <tr>
                         <td className="py-3 px-5 text-rose-400 font-semibold">Total Operational Expenses</td>
                         <td className="py-3 px-5 text-neutral-500">Daily expenses, utilities, salaries & PO costs</td>
                         <td className="py-3 px-5 text-right text-rose-500 font-semibold">
-                          -PKR {(financialData.totalExpenses || 0).toLocaleString()}
+                          -PKR {formatMoney(financialData.totalExpenses)}
                         </td>
                       </tr>
                       <tr className="bg-neutral-950/80 font-extrabold text-amber-400">
@@ -508,14 +509,14 @@ function Reports() {
                           Cash Sales + Credit Collected – Cash Expenses
                         </td>
                         <td className="py-4 px-5 text-right text-amber-400 text-sm">
-                          PKR {(financialData.cashInRegister || 0).toLocaleString()}
+                          PKR {formatMoney(financialData.cashInRegister)}
                         </td>
                       </tr>
                       <tr className="bg-neutral-950 font-extrabold text-emerald-400 border-t-2 border-neutral-800">
                         <td className="py-4 px-5 uppercase">NET OPERATIONAL PROFIT</td>
                         <td className="py-4 px-5 text-neutral-400 font-normal">Total Revenue – Total Expenses</td>
                         <td className="py-4 px-5 text-right text-emerald-400 text-sm">
-                          PKR {(financialData.netProfit || 0).toLocaleString()}
+                          PKR {formatMoney(financialData.netProfit)}
                         </td>
                       </tr>
                     </tbody>
@@ -591,7 +592,7 @@ function Reports() {
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-extrabold text-white">
-                          PKR {(cat.totalRevenue || 0).toLocaleString()}
+                          PKR {formatMoney(cat.totalRevenue)}
                         </p>
                         <p className="text-[10px] font-semibold text-amber-500">{cat.percentage}% share</p>
                       </div>
@@ -628,10 +629,10 @@ function Reports() {
                         <td className="py-4 px-6 font-bold text-white">{item._id}</td>
                         <td className="py-4 px-6 text-emerald-400 font-semibold">{item.quantitySold} pcs</td>
                         <td className="py-4 px-6 font-extrabold text-white">
-                          PKR {(item.totalRevenue || 0).toLocaleString()}
+                          PKR {formatMoney(item.totalRevenue)}
                         </td>
                         <td className="py-4 px-6 text-right text-neutral-400">
-                          PKR {Math.round(item.avgPrice || 0).toLocaleString()}
+                          PKR {formatMoney(item.avgPrice)}
                         </td>
                       </tr>
                     ))}
@@ -704,10 +705,10 @@ function Reports() {
                         </td>
                         <td className="py-4 px-6 text-emerald-400 font-bold">{staff.ordersProcessed}</td>
                         <td className="py-4 px-6 font-extrabold text-white">
-                          PKR {(staff.totalSalesGenerated || 0).toLocaleString()}
+                          PKR {formatMoney(staff.totalSalesGenerated)}
                         </td>
                         <td className="py-4 px-6 text-right text-neutral-400">
-                          PKR {Math.round(staff.avgOrderValue || 0).toLocaleString()}
+                          PKR {formatMoney(staff.avgOrderValue)}
                         </td>
                       </tr>
                     ))}
@@ -725,7 +726,7 @@ function Reports() {
                     TOTAL CREDIT GIVEN (ALL-TIME)
                   </span>
                   <p className="text-2xl font-extrabold text-sky-400 mt-2">
-                    PKR {(customerData.summary?.totalCreditGiven || 0).toLocaleString()}
+                    PKR {formatMoney(customerData.summary?.totalCreditGiven)}
                   </p>
                 </div>
                 <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-5 shadow-xs">
@@ -733,7 +734,7 @@ function Reports() {
                     TOTAL CREDIT SETTLED
                   </span>
                   <p className="text-2xl font-extrabold text-emerald-400 mt-2">
-                    PKR {(customerData.summary?.creditSettled || 0).toLocaleString()}
+                    PKR {formatMoney(customerData.summary?.creditSettled)}
                   </p>
                 </div>
                 <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-5 shadow-xs">
@@ -741,7 +742,7 @@ function Reports() {
                     CURRENT OUTSTANDING BALANCE (UDHAR)
                   </span>
                   <p className="text-2xl font-extrabold text-rose-500 mt-2">
-                    PKR {(customerData.summary?.totalOutstanding || 0).toLocaleString()}
+                    PKR {formatMoney(customerData.summary?.totalOutstanding)}
                   </p>
                 </div>
               </div>
@@ -778,7 +779,7 @@ function Reports() {
                               <td className="py-3 px-5 font-bold text-white">{cust.name}</td>
                               <td className="py-3 px-5 text-neutral-400">{cust.phone}</td>
                               <td className="py-3 px-5 text-right font-extrabold text-rose-400">
-                                PKR {(cust.creditBalance || 0).toLocaleString()}
+                                PKR {formatMoney(cust.creditBalance)}
                               </td>
                             </tr>
                           ))
@@ -819,7 +820,7 @@ function Reports() {
                               </td>
                               <td className="py-3 px-5 text-emerald-400 font-bold">{cust.orderCount}</td>
                               <td className="py-3 px-5 text-right font-extrabold text-white">
-                                PKR {(cust.totalSpent || 0).toLocaleString()}
+                                PKR {formatMoney(cust.totalSpent)}
                               </td>
                             </tr>
                           ))
@@ -840,7 +841,7 @@ function Reports() {
                     TOTAL PURCHASE VOLUME
                   </span>
                   <p className="text-2xl font-extrabold text-amber-500 mt-2">
-                    PKR {(supplierData.summary?.totalPurchaseVolume || 0).toLocaleString()}
+                    PKR {formatMoney(supplierData.summary?.totalPurchaseVolume)}
                   </p>
                 </div>
                 <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-5 shadow-xs">
@@ -848,7 +849,7 @@ function Reports() {
                     TOTAL SUPPLIER PAYABLE (OUTSTANDING)
                   </span>
                   <p className="text-2xl font-extrabold text-rose-500 mt-2">
-                    PKR {(supplierData.summary?.totalOutstanding || 0).toLocaleString()}
+                    PKR {formatMoney(supplierData.summary?.totalOutstanding)}
                   </p>
                 </div>
               </div>
@@ -886,13 +887,13 @@ function Reports() {
                             </td>
                             <td className="py-4 px-6 text-neutral-300 font-bold">{sup.orderCount} POs</td>
                             <td className="py-4 px-6 font-bold text-white">
-                              PKR {(sup.totalPurchaseVolume || 0).toLocaleString()}
+                              PKR {formatMoney(sup.totalPurchaseVolume)}
                             </td>
                             <td className="py-4 px-6 text-emerald-400 font-bold">
-                              PKR {(sup.totalPaid || 0).toLocaleString()}
+                              PKR {formatMoney(sup.totalPaid)}
                             </td>
                             <td className="py-4 px-6 text-right font-extrabold text-rose-400">
-                              PKR {(sup.totalOutstanding || 0).toLocaleString()}
+                              PKR {formatMoney(sup.totalOutstanding)}
                             </td>
                           </tr>
                         ))

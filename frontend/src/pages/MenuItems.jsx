@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import ConfirmModal from '../components/ConfirmModal';
+import formatQty from '../utils/formatQty';
 import { UtensilsCrossed, Plus, Trash2, Pencil, X, Check, Package, Layers, Link, Upload, ChevronDown, ChevronUp } from 'lucide-react';
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -173,7 +174,7 @@ function MenuItems() {
       image: item.image || '',
       imageTab: item.image?.startsWith('data:') ? 'upload' : 'url',
       variants: (item.variants || []).map((v) => ({ name: v.name, price: String(v.price), portionMultiplier: v.portionMultiplier ?? 1 })),
-      recipe: (item.recipe || []).map((r) => ({ inventoryItemId: r.inventoryItemId?._id || r.inventoryItemId || '', quantityUsed: String(r.quantityUsed || ''), unit: r.unit || 'units' })),
+      recipe: (item.recipe || []).map((r) => ({ inventoryItemId: r.inventoryItemId?._id || r.inventoryItemId || '', quantityUsed: formatQty(r.quantityUsed), unit: r.unit || 'units' })),
     });
     setIsModalOpen(true);
   };

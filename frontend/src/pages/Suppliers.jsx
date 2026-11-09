@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import ConfirmModal from '../components/ConfirmModal';
+import formatMoney from '../utils/formatMoney';
 import { Truck, Plus, Edit2, Trash2, X, Check, Store, Wallet, Search } from 'lucide-react';
 
 const EMPTY_FORM = {
@@ -178,7 +179,7 @@ function Suppliers() {
           </div>
           <div>
             <p className="text-2xl sm:text-3xl font-extrabold text-neutral-900 dark:text-white leading-none">
-              PKR {totalPayableBalance.toLocaleString()}
+              PKR {formatMoney(totalPayableBalance)}
             </p>
             <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mt-1">
               TOTAL PAYABLE BALANCE
@@ -256,7 +257,7 @@ function Suppliers() {
                       <td className="px-6 py-4">
                         {outstanding > 0 ? (
                           <span className="text-rose-500 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-full text-xs font-bold">
-                            Owes Rs. {outstanding.toFixed(0)}
+                            Owes Rs. {formatMoney(outstanding)}
                           </span>
                         ) : (
                           <span className="text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full text-xs font-bold">

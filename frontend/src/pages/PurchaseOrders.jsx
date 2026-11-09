@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import formatQty from '../utils/formatQty';
+import formatMoney from '../utils/formatMoney';
 import { ClipboardList, Plus, DollarSign, XCircle, Trash2, Package, X } from 'lucide-react';
 
 function PurchaseOrders() {
@@ -209,7 +211,7 @@ function PurchaseOrders() {
           </div>
           <div>
             <p className="text-2xl sm:text-3xl font-extrabold text-neutral-900 dark:text-white leading-none">
-              PKR {purchaseOrders.reduce((sum, po) => sum + (po.totalCost || 0), 0).toLocaleString()}
+              PKR {formatMoney(purchaseOrders.reduce((sum, po) => sum + (po.totalCost || 0), 0))}
             </p>
             <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mt-1">
               TOTAL PURCHASING EXPENSES
@@ -316,7 +318,7 @@ function PurchaseOrders() {
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-neutral-200 dark:border-neutral-800">
-              <span className="text-base font-extrabold text-amber-500">Total: Rs. {calculateTotal()}</span>
+              <span className="text-base font-extrabold text-amber-500">Total: Rs. {formatMoney(calculateTotal())}</span>
               <button
                 type="submit"
                 disabled={submitting}
@@ -364,13 +366,13 @@ function PurchaseOrders() {
                         {po.supplierId?.name || 'Direct Order'}
                       </td>
                       <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">
-                        {po.items.map((i) => `${i.inventoryItemId?.name || i.itemName} (${i.quantity})`).join(', ')}
+                        {po.items.map((i) => `${i.inventoryItemId?.name || i.itemName} (${formatQty(i.quantity)})`).join(', ')}
                       </td>
-                      <td className="px-6 py-4 font-extrabold text-neutral-900 dark:text-white">Rs. {po.totalCost}</td>
+                      <td className="px-6 py-4 font-extrabold text-neutral-900 dark:text-white">Rs. {formatMoney(po.totalCost)}</td>
                       <td className="px-6 py-4 text-xs">
-                        <div className="font-bold text-emerald-500">Paid: Rs. {paid}</div>
+                        <div className="font-bold text-emerald-500">Paid: Rs. {formatMoney(paid)}</div>
                         {remaining > 0 ? (
-                          <div className="font-bold text-rose-500">Rem: Rs. {remaining}</div>
+                          <div className="font-bold text-rose-500">Rem: Rs. {formatMoney(remaining)}</div>
                         ) : (
                           <div className="text-neutral-400">Fully Paid</div>
                         )}
@@ -434,15 +436,15 @@ function PurchaseOrders() {
             <div className="p-4 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl space-y-1 text-xs">
               <div className="flex justify-between text-neutral-600 dark:text-neutral-400">
                 <span>Total Cost</span>
-                <span className="font-bold text-neutral-900 dark:text-white">Rs. {payModalPO.totalCost}</span>
+                <span className="font-bold text-neutral-900 dark:text-white">Rs. {formatMoney(payModalPO.totalCost)}</span>
               </div>
               <div className="flex justify-between text-emerald-500">
                 <span>Already Paid</span>
-                <span className="font-bold">Rs. {payModalPO.amountPaid || 0}</span>
+                <span className="font-bold">Rs. {formatMoney(payModalPO.amountPaid)}</span>
               </div>
               <div className="flex justify-between text-rose-500 font-bold pt-1 border-t border-neutral-200 dark:border-neutral-800">
                 <span>Remaining Balance</span>
-                <span>Rs. {Math.max(0, (payModalPO.totalCost || 0) - (payModalPO.amountPaid || 0))}</span>
+                <span>Rs. {formatMoney(Math.max(0, (payModalPO.totalCost || 0) - (payModalPO.amountPaid || 0)))}</span>
               </div>
             </div>
 

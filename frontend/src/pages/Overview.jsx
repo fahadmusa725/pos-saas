@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import formatMoney from '../utils/formatMoney';
 import {
   Grid,
   UtensilsCrossed,
@@ -199,7 +200,7 @@ function Overview() {
                 </span>
               </div>
               <p className="text-3xl font-extrabold text-neutral-900 dark:text-white">
-                Rs. {stats.todayRevenue.toLocaleString()}
+                Rs. {formatMoney(stats.todayRevenue)}
               </p>
               <p className="text-xs text-neutral-400 mt-1.5 font-medium">
                 {stats.todayOrders} {stats.todayOrders === 1 ? 'order' : 'orders'} today
@@ -216,7 +217,7 @@ function Overview() {
                 </span>
               </div>
               <p className="text-3xl font-extrabold text-neutral-900 dark:text-white">
-                Rs. {stats.allTimeRevenue.toLocaleString()}
+                Rs. {formatMoney(stats.allTimeRevenue)}
               </p>
               <p className="text-xs text-neutral-400 mt-1.5 font-medium">
                 {stats.allTimeOrders} completed orders
@@ -233,7 +234,7 @@ function Overview() {
                 </span>
               </div>
               <p className="text-3xl font-extrabold text-neutral-900 dark:text-white">
-                Rs. {stats.avgOrderValue.toLocaleString()}
+                Rs. {formatMoney(stats.avgOrderValue)}
               </p>
               <p className="text-xs text-neutral-400 mt-1.5 font-medium">Per order average</p>
             </div>
@@ -346,7 +347,7 @@ function Overview() {
                         <span className="truncate max-w-[200px]">{item.name}</span>
                       </div>
                       <span className="text-neutral-500 dark:text-neutral-400 font-medium">
-                        <strong className="text-neutral-900 dark:text-neutral-200">{item.totalQuantity}</strong> sold (Rs. {item.totalRevenue.toLocaleString()})
+                        <strong className="text-neutral-900 dark:text-neutral-200">{item.totalQuantity}</strong> sold (Rs. {formatMoney(item.totalRevenue)})
                       </span>
                     </div>
                     <div className="h-2 w-full bg-neutral-100 dark:bg-neutral-950 rounded-full overflow-hidden">
@@ -426,7 +427,7 @@ function Overview() {
 
                     <div className="text-right">
                       <p className="text-sm font-extrabold text-amber-500">
-                        Rs. {(order.total || 0).toLocaleString()}
+                        Rs. {formatMoney(order.total)}
                       </p>
                     </div>
                   </div>

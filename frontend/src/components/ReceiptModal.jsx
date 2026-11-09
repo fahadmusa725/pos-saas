@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Printer, CheckCircle, X } from 'lucide-react';
 import api from '../services/api';
+import formatMoney from '../utils/formatMoney';
 
 function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
   const [settings, setSettings] = useState(null);
@@ -122,12 +123,12 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
                           <span className="text-[9px] text-neutral-500 block">+ {item.addOns.map((a) => a.name).join(', ')}</span>
                         )}
                       </span>
-                      <span className="w-16 text-right font-bold">Rs. {netPrice}</span>
+                      <span className="w-16 text-right font-bold">Rs. {formatMoney(netPrice)}</span>
                     </div>
                     {hasDisc && (
                       <div className="text-[9px] text-neutral-500 pl-9 flex justify-between">
-                        <span>Original: <s>Rs. {basePrice}</s></span>
-                        <span>Disc: -Rs. {discAmt}</span>
+                        <span>Original: <s>Rs. {formatMoney(basePrice)}</s></span>
+                        <span>Disc: -Rs. {formatMoney(discAmt)}</span>
                       </div>
                     )}
                   </div>
@@ -166,7 +167,7 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
                               {item.name}
                               {item.variant && <span className="text-[10px] text-neutral-600 block">Size: {item.variant}</span>}
                             </span>
-                            <span className="w-16 text-right font-bold">Rs. {netPrice}</span>
+                            <span className="w-16 text-right font-bold">Rs. {formatMoney(netPrice)}</span>
                           </div>
                         </div>
                       );
@@ -181,26 +182,26 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
             <div className="space-y-1 text-[11px]">
               <div className="flex justify-between text-neutral-700">
                 <span>Subtotal:</span>
-                <span>Rs. {order.subtotal || order.total}</span>
+                <span>Rs. {formatMoney(order.subtotal || order.total)}</span>
               </div>
 
               {order.tax > 0 && (
                 <div className="flex justify-between text-neutral-700">
                   <span>Tax / GST ({settings?.taxRate ?? 0}%):</span>
-                  <span>+Rs. {order.tax}</span>
+                  <span>+Rs. {formatMoney(order.tax)}</span>
                 </div>
               )}
 
               {order.discount > 0 && (
                 <div className="flex justify-between text-emerald-700 font-bold">
                   <span>Discount / Coupon:</span>
-                  <span>-Rs. {order.discount}</span>
+                  <span>-Rs. {formatMoney(order.discount)}</span>
                 </div>
               )}
 
               <div className="flex justify-between items-center font-black text-base pt-1 pb-1 border-t-2 border-neutral-900 border-b-2 my-1">
                 <span>GRAND TOTAL</span>
-                <span>Rs. {order.total}</span>
+                <span>Rs. {formatMoney(order.total)}</span>
               </div>
             </div>
 
@@ -210,20 +211,20 @@ function ReceiptModal({ order, restaurantName = 'Restaurant', onClose }) {
                 order.paymentBreakdown.map((p, i) => (
                   <div key={i} className="flex justify-between text-neutral-700 uppercase">
                     <span>• {p.method || p.paymentMethod}</span>
-                    <span className="font-bold">Rs. {p.amount}</span>
+                    <span className="font-bold">Rs. {formatMoney(p.amount)}</span>
                   </div>
                 ))
               ) : (
                 <div className="flex justify-between text-neutral-700 uppercase">
                   <span>• {order.paymentMethod || 'Cash'}</span>
-                  <span className="font-bold">Rs. {order.total}</span>
+                  <span className="font-bold">Rs. {formatMoney(order.total)}</span>
                 </div>
               )}
 
               {order.changeAmount > 0 && (
                 <div className="flex justify-between text-neutral-800 font-bold pt-1 border-t border-dotted border-neutral-400">
                   <span>Change Returned:</span>
-                  <span>Rs. {order.changeAmount}</span>
+                  <span>Rs. {formatMoney(order.changeAmount)}</span>
                 </div>
               )}
             </div>

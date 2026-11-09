@@ -3,6 +3,8 @@ import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import ConfirmModal from '../components/ConfirmModal';
+import formatQty from '../utils/formatQty';
+import formatMoney from '../utils/formatMoney';
 import { Package, Plus, AlertTriangle, Edit2, Trash2, Search, DollarSign, ChevronDown, Tag } from 'lucide-react';
 
 const UNITS = ['kg', 'litre', 'piece', 'dozen', 'box', 'pack', 'other'];
@@ -111,8 +113,8 @@ function Inventory() {
       name: item.name,
       category: item.category || 'Other',
       unit: item.unit,
-      currentStock: item.currentStock,
-      reorderLevel: item.reorderLevel,
+      currentStock: formatQty(item.currentStock),
+      reorderLevel: formatQty(item.reorderLevel),
       costPerUnit: item.costPerUnit,
     });
     setShowModal(true);
@@ -206,7 +208,7 @@ function Inventory() {
           </div>
           <div>
             <p className="text-xl font-extrabold text-neutral-900 dark:text-white leading-none">
-              PKR {totalAssetValue.toLocaleString('en-PK', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+              PKR {formatMoney(totalAssetValue)}
             </p>
             <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mt-1">Total Inventory Asset Value</p>
           </div>
@@ -328,13 +330,13 @@ function Inventory() {
                         })()}
                       </td>
                       <td className="px-6 py-4 font-bold text-neutral-900 dark:text-white">
-                        {item.currentStock} <span className="text-xs font-normal text-neutral-400">{item.unit}</span>
+                        {formatQty(item.currentStock)} <span className="text-xs font-normal text-neutral-400">{item.unit}</span>
                       </td>
                       <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400">
-                        {item.reorderLevel} {item.unit}
+                        {formatQty(item.reorderLevel)} {item.unit}
                       </td>
                       <td className="px-6 py-4 font-extrabold text-neutral-900 dark:text-white">
-                        Rs. {item.costPerUnit}
+                        Rs. {formatMoney(item.costPerUnit)}
                       </td>
                       <td className="px-6 py-4">
                         {isOut ? (
@@ -422,6 +424,7 @@ function Inventory() {
                   <input
                     type="number"
                     min="0"
+                    step="0.001"
                     value={form.currentStock}
                     onChange={(e) => setForm({ ...form, currentStock: Number(e.target.value) })}
                     className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
@@ -433,6 +436,7 @@ function Inventory() {
                   <input
                     type="number"
                     min="0"
+                    step="0.001"
                     value={form.reorderLevel}
                     onChange={(e) => setForm({ ...form, reorderLevel: Number(e.target.value) })}
                     className="w-full px-4 py-2.5 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
