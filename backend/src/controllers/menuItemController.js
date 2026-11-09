@@ -1,4 +1,5 @@
 const MenuItem = require('../models/MenuItem');
+const { hasAtMostThreeDecimals } = require('../utils/stockQuantity');
 
 // @desc Create menu item
 // @route POST /api/menu-items
@@ -14,6 +15,9 @@ exports.createMenuItem = async (req, res) => {
       for (const r of recipe) {
         if (!r.inventoryItemId || !r.quantityUsed || isNaN(Number(r.quantityUsed)) || Number(r.quantityUsed) <= 0) {
           return res.status(400).json({ success: false, message: 'Each recipe ingredient must have a valid inventory item and quantity greater than 0' });
+        }
+        if (!hasAtMostThreeDecimals(r.quantityUsed)) {
+          return res.status(400).json({ success: false, message: 'Recipe quantities can have at most 3 decimal places' });
         }
       }
     }
@@ -120,6 +124,9 @@ exports.updateMenuItem = async (req, res) => {
       for (const r of req.body.recipe) {
         if (!r.inventoryItemId || !r.quantityUsed || isNaN(Number(r.quantityUsed)) || Number(r.quantityUsed) <= 0) {
           return res.status(400).json({ success: false, message: 'Each recipe ingredient must have a valid inventory item and quantity greater than 0' });
+        }
+        if (!hasAtMostThreeDecimals(r.quantityUsed)) {
+          return res.status(400).json({ success: false, message: 'Recipe quantities can have at most 3 decimal places' });
         }
       }
     }

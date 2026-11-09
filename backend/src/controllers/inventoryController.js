@@ -1,4 +1,7 @@
 const InventoryItem = require('../models/InventoryItem');
+const { hasAtMostThreeDecimals } = require('../utils/stockQuantity');
+
+const QUANTITY_PRECISION_ERROR = 'Stock and reorder level can have at most 3 decimal places';
 
 // @desc    Get all inventory items
 // @route   GET /api/inventory
@@ -45,12 +48,18 @@ const createInventoryItem = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name and unit are required' });
     }
 
+    const stockValue = currentStock !== undefined ? Number(currentStock) : 0;
+    const reorderValue = reorderLevel !== undefined ? Number(reorderLevel) : 0;
+    if (!hasAtMostThreeDecimals(stockValue) || !hasAtMostThreeDecimals(reorderValue)) {
+      return res.status(400).json({ success: false, message: QUANTITY_PRECISION_ERROR });
+    }
+
     const item = await InventoryItem.create({
       restaurantId: req.tenantId,
       name: name.trim(),
       unit,
-      currentStock: currentStock !== undefined ? Number(currentStock) : 0,
-      reorderLevel: reorderLevel !== undefined ? Number(reorderLevel) : 0,
+      currentStock: stockValue,
+      reorderLevel: reorderValue,
       costPerUnit: costPerUnit !== undefined ? Number(costPerUnit) : 0,
       category: category || 'Other',
     });
@@ -75,6 +84,10 @@ const updateInventoryItem = async (req, res) => {
 
     if (name !== undefined) item.name = name.trim();
     if (unit !== undefined) item.unit = unit;
+    if ((currentStock !== undefined && !hasAtMostThreeDecimals(currentStock))
+      || (reorderLevel !== undefined && !hasAtMostThreeDecimals(reorderLevel))) {
+      return res.status(400).json({ success: false, message: QUANTITY_PRECISION_ERROR });
+    }
     if (currentStock !== undefined) item.currentStock = Number(currentStock);
     if (reorderLevel !== undefined) item.reorderLevel = Number(reorderLevel);
     if (costPerUnit !== undefined) item.costPerUnit = Number(costPerUnit);

@@ -1,5 +1,6 @@
 const PurchaseOrder = require('../models/PurchaseOrder');
 const InventoryItem = require('../models/InventoryItem');
+const { stockAfterDelta } = require('../utils/stockQuantity');
 
 // Best-effort expense entry for a received purchase order
 const createPurchaseExpense = async (order, restaurantId) => {
@@ -162,7 +163,8 @@ const updatePurchaseOrderStatus = async (req, res) => {
       for (const item of order.items) {
         await InventoryItem.findOneAndUpdate(
           { _id: item.inventoryItemId, restaurantId: req.tenantId },
-          { $inc: { currentStock: item.quantity }, costPerUnit: item.costPerUnit }
+          [{ $set: { currentStock: stockAfterDelta(item.quantity), costPerUnit: item.costPerUnit } }],
+          { updatePipeline: true }
         );
       }
 
@@ -246,7 +248,8 @@ const payPurchaseOrder = async (req, res) => {
       for (const item of order.items) {
         await InventoryItem.findOneAndUpdate(
           { _id: item.inventoryItemId, restaurantId: req.tenantId },
-          { $inc: { currentStock: item.quantity }, costPerUnit: item.costPerUnit }
+          [{ $set: { currentStock: stockAfterDelta(item.quantity), costPerUnit: item.costPerUnit } }],
+          { updatePipeline: true }
         );
       }
 

@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const Table = require('../models/Table');
+const { stockAfterDelta } = require('../utils/stockQuantity');
 
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString().slice(-6);
@@ -116,8 +117,8 @@ const deductInventoryForItems = async (processedItems, restaurantId) => {
   for (const { inventoryItemId, amount } of deductions) {
     const updated = await InventoryItem.findOneAndUpdate(
       { _id: inventoryItemId, restaurantId, currentStock: { $gte: amount } },
-      { $inc: { currentStock: -amount } },
-      { returnDocument: 'after' }
+      [{ $set: { currentStock: stockAfterDelta(-amount) } }],
+      { returnDocument: 'after', updatePipeline: true }
     );
 
     if (!updated) {
@@ -125,7 +126,8 @@ const deductInventoryForItems = async (processedItems, restaurantId) => {
       for (const rollback of applied) {
         await InventoryItem.findOneAndUpdate(
           { _id: rollback.inventoryItemId, restaurantId },
-          { $inc: { currentStock: rollback.amount } }
+          [{ $set: { currentStock: stockAfterDelta(rollback.amount) } }],
+          { updatePipeline: true }
         );
       }
       const failedItem = await InventoryItem.findOne({ _id: inventoryItemId, restaurantId });
@@ -192,8 +194,8 @@ const restoreInventoryForItems = async (processedItems, restaurantId) => {
   for (const { inventoryItemId, amount } of restores) {
     const updated = await InventoryItem.findOneAndUpdate(
       { _id: inventoryItemId, restaurantId },
-      { $inc: { currentStock: amount } },
-      { returnDocument: 'after' }
+      [{ $set: { currentStock: stockAfterDelta(amount) } }],
+      { returnDocument: 'after', updatePipeline: true }
     );
 
     if (!updated) {
@@ -201,7 +203,8 @@ const restoreInventoryForItems = async (processedItems, restaurantId) => {
       for (const rollback of applied) {
         await InventoryItem.findOneAndUpdate(
           { _id: rollback.inventoryItemId, restaurantId },
-          { $inc: { currentStock: -rollback.amount } }
+          [{ $set: { currentStock: stockAfterDelta(-rollback.amount) } }],
+          { updatePipeline: true }
         );
       }
       throw new Error('Failed to restore inventory for the order');
@@ -586,7 +589,8 @@ exports.updateOrderStatus = async (req, res) => {
       for (const applied of appliedRestore) {
         await InventoryItem.findOneAndUpdate(
           { _id: applied.inventoryItemId, restaurantId: req.tenantId },
-          { $inc: { currentStock: -applied.amount } }
+          [{ $set: { currentStock: stockAfterDelta(-applied.amount) } }],
+          { updatePipeline: true }
         );
       }
       if (reversedCredit > 0 && order.customerId) {
