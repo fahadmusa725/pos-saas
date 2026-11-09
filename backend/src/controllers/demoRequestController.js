@@ -73,7 +73,7 @@ const updateDemoRequestStatus = async (req, res) => {
     const demoRequest = await DemoRequest.findByIdAndUpdate(
       req.params.id,
       { status },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!demoRequest) {

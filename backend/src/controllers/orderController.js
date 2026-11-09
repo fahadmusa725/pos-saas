@@ -66,57 +66,6 @@ const resolveMenuItemFromDB = async (item, restaurantId) => {
   return { dbItem, resolvedPrice, resolvedName: dbItem.name, resolvedVariant, resolvedAddOns };
 };
 
-const validateStockForItems = async (items, restaurantId) => {
-  const MenuItem = require('../models/MenuItem');
-  const InventoryItem = require('../models/InventoryItem');
-
-  const requiredStock = {};
-
-  for (const item of items) {
-    const menuItemId = item.menuItemId || item._id;
-    if (!menuItemId) continue;
-
-    // items here already have resolvedVariant from resolveMenuItemFromDB
-    const variantName = item.resolvedVariant || item.variant;
-
-    const menuItem = await MenuItem.findOne({
-      _id: menuItemId,
-      restaurantId,
-    }).select('name recipe variants');
-
-    // ONLY check stock for menu items that have a non-empty recipe
-    if (menuItem && menuItem.recipe && menuItem.recipe.length > 0) {
-      let multiplier = 1;
-      if (variantName && menuItem.variants && menuItem.variants.length > 0) {
-        const foundVariant = menuItem.variants.find((v) => v.name === variantName);
-        if (foundVariant && foundVariant.portionMultiplier) {
-          multiplier = Number(foundVariant.portionMultiplier);
-        }
-      }
-
-      const itemQty = Number(item.quantity) || 1;
-
-      for (const ingredient of menuItem.recipe) {
-        if (!ingredient.inventoryItemId || !ingredient.quantityUsed) continue;
-        const invId = ingredient.inventoryItemId.toString();
-        const reqQty = Number(ingredient.quantityUsed) * multiplier * itemQty;
-
-        requiredStock[invId] = (requiredStock[invId] || 0) + reqQty;
-      }
-    }
-  }
-
-  for (const [invId, totalRequired] of Object.entries(requiredStock)) {
-    const invItem = await InventoryItem.findOne({ _id: invId, restaurantId });
-    if (invItem && invItem.currentStock < totalRequired) {
-      const avail = Math.max(0, invItem.currentStock);
-      throw validationError(
-        `Insufficient stock for ingredient: ${invItem.name}. Available: ${avail} ${invItem.unit || ''}, Required: ${totalRequired.toFixed(2)} ${invItem.unit || ''}`
-      );
-    }
-  }
-};
-
 // Atomically deduct inventory for a list of processed order items.
 // Uses conditional update (currentStock >= required) per ingredient.
 // If any deduction fails, all already-applied deductions are rolled back.
@@ -168,7 +117,7 @@ const deductInventoryForItems = async (processedItems, restaurantId) => {
     const updated = await InventoryItem.findOneAndUpdate(
       { _id: inventoryItemId, restaurantId, currentStock: { $gte: amount } },
       { $inc: { currentStock: -amount } },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!updated) {
@@ -180,8 +129,13 @@ const deductInventoryForItems = async (processedItems, restaurantId) => {
         );
       }
       const failedItem = await InventoryItem.findOne({ _id: inventoryItemId, restaurantId });
-      const name = failedItem ? failedItem.name : inventoryItemId.toString();
-      throw validationError(`Insufficient stock for ingredient: ${name}`);
+      if (!failedItem) {
+        throw validationError(`Insufficient stock for ingredient: ${inventoryItemId.toString()}`);
+      }
+      const available = Math.max(0, failedItem.currentStock);
+      throw validationError(
+        `Insufficient stock for ingredient: ${failedItem.name}. Available: ${available} ${failedItem.unit || ''}, Required: ${amount.toFixed(2)} ${failedItem.unit || ''}`
+      );
     }
 
     applied.push({ inventoryItemId, amount });
@@ -239,7 +193,7 @@ const restoreInventoryForItems = async (processedItems, restaurantId) => {
     const updated = await InventoryItem.findOneAndUpdate(
       { _id: inventoryItemId, restaurantId },
       { $inc: { currentStock: amount } },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!updated) {
@@ -259,16 +213,24 @@ const restoreInventoryForItems = async (processedItems, restaurantId) => {
   return applied;
 };
 
+// Orders leave the API and the socket with their references expanded, exactly like
+// getOrders: tableId -> { tableNumber }, customerId -> { name, phone }.
+// Mongoose 9 documents support populate() returning a promise (no callback).
+const populateOrderRefs = (order) => {
+  if (!order) return order;
+  return order.populate([
+    { path: 'tableId', select: 'tableNumber' },
+    { path: 'customerId', select: 'name phone' },
+  ]);
+};
+
 const deriveOrderStatusFromItems = (order) => {
   if (!order.items || order.items.length === 0) return order.status;
 
   const statuses = order.items.map((i) => i.status || 'pending');
 
-  const allServed = statuses.every((s) => s === 'served');
-  if (allServed) return 'ready'; // Keep order active & table occupied until payment!
-
-  const allReadyOrServed = statuses.every((s) => s === 'ready' || s === 'served');
-  if (allReadyOrServed) return 'ready';
+  // Keep the order active and the table occupied until payment, even when all items are served
+  if (statuses.every((s) => s === 'ready' || s === 'served')) return 'ready';
 
   const anyInProgress = statuses.some((s) => ['preparing', 'ready', 'served'].includes(s));
   if (anyInProgress) return 'preparing';
@@ -324,9 +286,7 @@ exports.createOrder = async (req, res) => {
     // Only restaurant-admin and manager can apply item-level discounts
     const canApplyItemDiscount = ['restaurant-admin', 'manager'].includes(req.user.role);
 
-    // Stock check uses resolvedItemMeta (has resolvedVariant for multiplier)
-    await validateStockForItems(resolvedItemMeta, req.tenantId);
-
+    // Stock is validated atomically by deductInventoryForItems (called before the order is saved)
     let subtotal = 0;
     const processedItems = resolvedItemMeta.map((item) => {
       const { dbItem, resolvedPrice, resolvedName, resolvedVariant, resolvedAddOns, quantity } = item;
@@ -462,6 +422,8 @@ exports.createOrder = async (req, res) => {
         { status: 'occupied' }
       );
     }
+
+    await populateOrderRefs(order);
 
     req.io.to(req.tenantId.toString()).emit('newOrder', order);
 
@@ -650,7 +612,7 @@ exports.updateOrderStatus = async (req, res) => {
             const updatedCustomer = await Customer.findOneAndUpdate(
               { _id: order.customerId, restaurantId: req.tenantId },
               { $inc: { creditBalance: -creditAmount } },
-              { new: true }
+              { returnDocument: 'after' }
             );
             if (!updatedCustomer) {
               throw new Error('Customer not found while reversing credit');
@@ -670,7 +632,7 @@ exports.updateOrderStatus = async (req, res) => {
       updatedOrder = await Order.findOneAndUpdate(
         { _id: order._id, restaurantId: req.tenantId, status: previousStatus },
         { $set: { status } },
-        { new: true }
+        { returnDocument: 'after' }
       );
     } catch (saveErr) {
       await rollbackSideEffects();
@@ -691,6 +653,8 @@ exports.updateOrderStatus = async (req, res) => {
         { status: 'available' }
       );
     }
+
+    await populateOrderRefs(updatedOrder);
 
     req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', updatedOrder);
     if (['completed', 'cancelled'].includes(status)) {
@@ -728,6 +692,8 @@ exports.updateItemStatus = async (req, res) => {
     order.status = newDerivedStatus;
 
     await order.save();
+
+    await populateOrderRefs(order);
 
     req.io.to(req.tenantId.toString()).emit('orderItemStatusUpdated', { orderId, itemId, status });
     req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
@@ -901,6 +867,8 @@ exports.markAsPaid = async (req, res) => {
 
     await order.save();
 
+    await populateOrderRefs(order);
+
     req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);
     if (order.paymentStatus === 'paid' || order.status === 'completed') {
       req.io.to(req.tenantId.toString()).emit('orderCompleted', order);
@@ -944,8 +912,6 @@ exports.addItemsToOrder = async (req, res) => {
       const meta = await resolveMenuItemFromDB(item, req.tenantId);
       resolvedItemMeta.push({ ...item, ...meta, quantity: qty });
     }
-
-    await validateStockForItems(resolvedItemMeta, req.tenantId);
 
     const maxExistingRound = (order.items || []).reduce((max, i) => Math.max(max, i.round || 1), 1);
     const nextRound = maxExistingRound + 1;
@@ -1010,7 +976,7 @@ exports.addItemsToOrder = async (req, res) => {
         if (coupon) {
           recomputedCouponDiscount = calculateCouponDiscount(coupon, order.subtotal);
         }
-      } catch (couponErr) {
+      } catch {
         // Keep existing discount if coupon lookup fails
       }
     }
@@ -1035,6 +1001,8 @@ exports.addItemsToOrder = async (req, res) => {
       await restoreInventoryForItems(newProcessedItems, req.tenantId);
       throw saveErr;
     }
+
+    await populateOrderRefs(order);
 
     req.io.to(req.tenantId.toString()).emit('newOrder', order);
     req.io.to(req.tenantId.toString()).emit('orderStatusUpdated', order);

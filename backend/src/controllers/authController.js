@@ -104,7 +104,6 @@ exports.login = async (req, res) => {
     }
 
     if (user.role !== 'super-admin' && user.restaurantId) {
-      const Restaurant = require('../models/Restaurant');
       const restaurant = await Restaurant.findById(user.restaurantId);
       if (!restaurant) {
         return res.status(404).json({ success: false, message: 'Associated restaurant not found' });

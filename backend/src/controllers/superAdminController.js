@@ -103,6 +103,13 @@ const createRestaurant = async (req, res) => {
       });
     }
 
+    if (typeof adminPassword !== 'string' || adminPassword.trim().length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Admin password must be at least 8 characters long',
+      });
+    }
+
     const cleanEmail = adminEmail.toLowerCase().trim();
 
     const existingUser = await User.findOne({ email: cleanEmail });

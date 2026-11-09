@@ -1,6 +1,60 @@
 const PurchaseOrder = require('../models/PurchaseOrder');
 const InventoryItem = require('../models/InventoryItem');
 
+// Best-effort expense entry for a received purchase order
+const createPurchaseExpense = async (order, restaurantId) => {
+  const Expense = require('../models/Expense');
+  const Supplier = require('../models/Supplier');
+
+  let supplierName = '';
+  if (order.supplierId) {
+    const supplier = await Supplier.findOne({ _id: order.supplierId, restaurantId }).select('name');
+    if (supplier) supplierName = supplier.name;
+  }
+
+  const supplierInfo = supplierName ? ` from ${supplierName}` : '';
+  const poRef = order._id.toString().slice(-6).toUpperCase();
+
+  await Expense.create({
+    restaurantId,
+    category: 'supplies',
+    amount: order.totalCost,
+    date: order.purchaseDate || new Date(),
+    description: `Purchase Order #${poRef}${supplierInfo}`,
+  });
+};
+
+// Re-enable menu items whose ingredients are all back in stock
+const reactivateMenuItems = async (restaurantId) => {
+  const MenuItem = require('../models/MenuItem');
+
+  const unavailableItems = await MenuItem.find({
+    restaurantId,
+    isAvailable: false,
+    'recipe.0': { $exists: true }, // only those with at least 1 recipe entry
+  });
+
+  for (const menuItem of unavailableItems) {
+    let allInStock = true;
+
+    for (const ingredient of menuItem.recipe) {
+      if (!ingredient.inventoryItemId) continue;
+      const inv = await InventoryItem.findOne({ _id: ingredient.inventoryItemId, restaurantId });
+      if (!inv || inv.currentStock <= 0) {
+        allInStock = false;
+        break;
+      }
+    }
+
+    if (allInStock) {
+      await MenuItem.findOneAndUpdate(
+        { _id: menuItem._id, restaurantId },
+        { isAvailable: true }
+      );
+    }
+  }
+};
+
 // @desc    Get all purchase orders
 // @route   GET /api/purchase-orders
 // @access  Private (restaurant-admin)
@@ -113,25 +167,7 @@ const updatePurchaseOrderStatus = async (req, res) => {
       }
 
       try {
-        const Expense = require('../models/Expense');
-        const Supplier = require('../models/Supplier');
-
-        let supplierName = '';
-        if (order.supplierId) {
-          const supplier = await Supplier.findOne({ _id: order.supplierId, restaurantId: req.tenantId }).select('name');
-          if (supplier) supplierName = supplier.name;
-        }
-
-        const supplierInfo = supplierName ? ` from ${supplierName}` : '';
-        const poRef = order._id.toString().slice(-6).toUpperCase();
-
-        await Expense.create({
-          restaurantId: req.tenantId,
-          category: 'supplies',
-          amount: order.totalCost,
-          date: order.purchaseDate || new Date(),
-          description: `Purchase Order #${poRef}${supplierInfo}`,
-        });
+        await createPurchaseExpense(order, req.tenantId);
       } catch (expenseErr) {
         console.error('Silent PO-to-Expense auto creation error:', expenseErr.message);
       }
@@ -143,37 +179,7 @@ const updatePurchaseOrderStatus = async (req, res) => {
     // Auto-Reactivation: Restore isAvailable on menu items whose ingredients are now back in stock
     if (status === 'received') {
       try {
-        const MenuItem = require('../models/MenuItem');
-        const InventoryItem = require('../models/InventoryItem');
-
-        const unavailableItems = await MenuItem.find({
-          restaurantId: req.tenantId,
-          isAvailable: false,
-          'recipe.0': { $exists: true }, // only those with at least 1 recipe entry
-        });
-
-        for (const menuItem of unavailableItems) {
-          let allInStock = true;
-
-          for (const ingredient of menuItem.recipe) {
-            if (!ingredient.inventoryItemId) continue;
-            const inv = await InventoryItem.findOne({
-              _id: ingredient.inventoryItemId,
-              restaurantId: req.tenantId,
-            });
-            if (!inv || inv.currentStock <= 0) {
-              allInStock = false;
-              break;
-            }
-          }
-
-          if (allInStock) {
-            await MenuItem.findOneAndUpdate(
-              { _id: menuItem._id, restaurantId: req.tenantId },
-              { isAvailable: true }
-            );
-          }
-        }
+        await reactivateMenuItems(req.tenantId);
       } catch (reactivationErr) {
         console.error('Silent menu item reactivation error:', reactivationErr.message);
       }
@@ -245,60 +251,13 @@ const payPurchaseOrder = async (req, res) => {
       }
 
       try {
-        const Expense = require('../models/Expense');
-        const Supplier = require('../models/Supplier');
-
-        let supplierName = '';
-        if (order.supplierId) {
-          const supplier = await Supplier.findOne({ _id: order.supplierId, restaurantId: req.tenantId }).select('name');
-          if (supplier) supplierName = supplier.name;
-        }
-
-        const supplierInfo = supplierName ? ` from ${supplierName}` : '';
-        const poRef = order._id.toString().slice(-6).toUpperCase();
-
-        await Expense.create({
-          restaurantId: req.tenantId,
-          category: 'supplies',
-          amount: order.totalCost,
-          date: order.purchaseDate || new Date(),
-          description: `Purchase Order #${poRef}${supplierInfo}`,
-        });
+        await createPurchaseExpense(order, req.tenantId);
       } catch (expenseErr) {
         console.error('Silent PO-to-Expense auto creation error:', expenseErr.message);
       }
 
       try {
-        const MenuItem = require('../models/MenuItem');
-
-        const unavailableItems = await MenuItem.find({
-          restaurantId: req.tenantId,
-          isAvailable: false,
-          'recipe.0': { $exists: true },
-        });
-
-        for (const menuItem of unavailableItems) {
-          let allInStock = true;
-
-          for (const ingredient of menuItem.recipe) {
-            if (!ingredient.inventoryItemId) continue;
-            const inv = await InventoryItem.findOne({
-              _id: ingredient.inventoryItemId,
-              restaurantId: req.tenantId,
-            });
-            if (!inv || inv.currentStock <= 0) {
-              allInStock = false;
-              break;
-            }
-          }
-
-          if (allInStock) {
-            await MenuItem.findOneAndUpdate(
-              { _id: menuItem._id, restaurantId: req.tenantId },
-              { isAvailable: true }
-            );
-          }
-        }
+        await reactivateMenuItems(req.tenantId);
       } catch (reactivationErr) {
         console.error('Silent menu item reactivation error:', reactivationErr.message);
       }

@@ -84,7 +84,6 @@ const updateInventoryItem = async (req, res) => {
 
     try {
       const MenuItem = require('../models/MenuItem');
-      const InventoryItem = require('../models/InventoryItem');
 
       const menuItemsWithIng = await MenuItem.find({
         restaurantId: req.tenantId,
