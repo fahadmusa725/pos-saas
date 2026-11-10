@@ -26,6 +26,14 @@ const realtimeRoutes = require('./routes/realtimeRoutes');
 function createApp() {
   const app = express();
 
+  // Behind Vercel's proxy the socket IP is the proxy, so req.ip would be the same for
+  // every visitor and IP-based limits (authLimiter) would be shared by all users. Trusting
+  // exactly one hop makes req.ip the real client from X-Forwarded-For. `1` and not `true`:
+  // express-rate-limit rejects a permissive `true` as trivially spoofable.
+  if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+  }
+
   const allowedOrigins = process.env.CLIENT_URL
     ? process.env.CLIENT_URL.split(',').map((u) => u.trim())
     : ['http://localhost:5173'];
