@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
-const { registerRestaurant, login } = require('../controllers/authController');
+const { login } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const { setTenant } = require('../middleware/tenantMiddleware');
 const Restaurant = require('../models/Restaurant');
@@ -14,7 +14,6 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later' },
 });
 
-router.post('/register-restaurant', authLimiter, registerRestaurant);
 router.post('/login', authLimiter, login);
 
 router.get('/me', protect, setTenant, (req, res) => {
@@ -50,4 +49,4 @@ router.get('/me/restaurant', protect, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router;
