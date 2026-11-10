@@ -1,135 +1,261 @@
-# DineFlow: Multi-Restaurant POS System
+# DineFlow
 
-A point of sale platform built for restaurants, designed so one system can serve many restaurants at once. Each with its own menu, staff, orders, inventory, and data, completely isolated from every other restaurant on the platform.
+Multi-tenant restaurant POS, kitchen, and inventory platform.
 
-Built with MongoDB, Express, React, and Node.js, with Socket.io handling live updates to the kitchen and waiter screens.
+![React](https://img.shields.io/badge/React-19.2.8-61DAFB?logo=react&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8.2.0-646CFF?logo=vite&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3.3-06B6D4?logo=tailwindcss&logoColor=white)
+![React Router](https://img.shields.io/badge/React_Router-7.18.2-CA4245?logo=reactrouter&logoColor=white)
+![Zustand](https://img.shields.io/badge/Zustand-5.0.14-2D3748)
+![Recharts](https://img.shields.io/badge/Recharts-3.10.1-22B573)
+![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-5.2.1-000000?logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?logo=mongodb&logoColor=white)
+![Mongoose](https://img.shields.io/badge/Mongoose-9.9.0-880000)
+![Ably](https://img.shields.io/badge/Ably-2.30.0-FF5416)
+![JWT](https://img.shields.io/badge/jsonwebtoken-9.0.3-000000?logo=jsonwebtokens&logoColor=white)
+![Nodemailer](https://img.shields.io/badge/Nodemailer-10.0.13-30B980)
 
-## What it does
+Live demo: [dineflow-saas-taupe.vercel.app](https://dineflow-saas-taupe.vercel.app)
 
-Every restaurant that signs up gets its own isolated space on the platform. Their menu, orders, staff, customers, and reports are never visible to any other restaurant using the system.
+## Overview
 
-### Day-to-day operations
+DineFlow is a point of sale and back office system for restaurants, built to host many restaurants on one deployment. Every restaurant works in its own space: its own menu, orders, staff, customers, inventory, and reports. Restaurant data routes are scoped to the logged in user's restaurant, so one restaurant never reaches another's data.
 
-- Menu and category management, with support for size/portion variants (e.g. Half/Full) at different prices
-- Menu item images via direct upload or a pasted image URL
-- Table tracking (available / occupied / reserved)
-- Order creation for dine-in, takeaway, and delivery
-- Dine-in orders support a running tab. More items can be added to an open table's order as the meal goes on (e.g. starters first, dessert later), all on a single bill, with each new round flagged clearly for the kitchen
-- Takeaway and delivery use a simpler, faster flow: create the order, take payment, print the receipt
-- A dedicated kitchen display screen that updates in real time as orders come in, with status tracking from pending through preparing to ready, and a sound alert on new orders
-- A real-time waiter screen that alerts staff the moment an order is ready to be served
+It fits small and mid sized restaurants that want the counter, the kitchen screen, and stock control in one place.
 
-### Inventory
+How it is used:
 
-- Menu items can have a recipe attached (the raw ingredients and quantities that go into making them)
-- Selling an item automatically deducts the right amount of each ingredient from stock, scaled correctly for portion size
-- Items are marked "Sold Out" automatically the moment an ingredient runs out, and become available again automatically once stock is replenished
-- Orders are blocked at checkout if there isn't enough stock to fulfill them
+- The platform owner logs in as super admin, into a separate panel. From there the super admin creates a restaurant, picks the plan (Basic or Pro), sets the status (trial, active, suspended) and the trial length, and sets the first admin account with an email and password.
+- The super admin hands those credentials to the restaurant owner. The owner logs in as restaurant admin and sets up categories, menu items, tables, and staff.
+- The admin creates staff accounts with a role (manager, cashier, waiter, kitchen) and chooses which dashboard modules each account can open. Permissions start from role defaults and can be adjusted per account.
 
-### Payments
+Roles in the system: `super-admin`, `restaurant-admin`, `manager`, `cashier`, `waiter`, `kitchen`.
 
-- Cash, card, and split payments across multiple methods on a single order, with automatic change calculation
-- Customer credit (tab/udhar): regular customers can be allowed to carry a balance, which is tracked and settled later
-- Per-item discounts and restaurant-wide coupon codes
-- Every financial calculation is verified on the backend. Nothing the frontend sends is trusted blindly
-- Printable, reprintable receipts
+## Features
 
-### Staff
+**POS and orders**
 
-- Role-based accounts: restaurant admin, manager, cashier, waiter, kitchen staff
-- Per-staff permissions: an admin can choose exactly which parts of the dashboard each staff member can access, independent of their role
+- Dine-in, takeaway, and delivery orders
+- Dine-in keeps a running tab on the table: more items can be added to the same open order in later rounds, each round tagged for the kitchen
+- Per item discounts and coupon codes
+- Split payments across cash, card, online, and credit, with change calculation
+- Item prices, stock, tax, and discounts are recalculated on the server, never taken from the browser
+- Order history with status, type, payment, date, and text filters, plus status changes and payment collection where the role allows
 
-### Back office
+**Kitchen and waiter screens**
 
-- Customer records with order history and phone-number lookup at checkout
-- Supplier records and purchase orders. Stock and expenses update automatically once a purchase is marked as paid/received
-- Expense tracking by category
-- A reporting section covering financial overview, cash/ledger detail, category sales, best sellers, peak hours, staff performance, customer balances, and supplier dues, all with date-range filtering and charts
+- Kitchen display with live tickets over Ably, status flow from pending through preparing to ready, and a sound alert on new orders
+- Waiter screen listing items that are ready to serve, with a sound alert and a toast when an order item becomes ready
+- Both screens have a history tab
+- Notification feed on both screens for new orders and low stock items, with read state kept in the browser
 
-### Platform management
+**Tables**
 
-- A super admin panel for onboarding new restaurants, suspending or reactivating accounts, resetting admin passwords, and managing the platform as a whole
-- Two subscription tiers (Basic and Pro) with different module access, plus a trial period for new signups
-- A public landing page with a request-a-demo form that emails a notification when someone submits it
+- Tables with number, capacity, and status: available, occupied, reserved
+- Status follows the open order on that table, and can also be toggled by hand
+- Counters for total, available, occupied, and reserved tables
 
-### Other things
+**Inventory and recipes**
 
-- Dark and light mode
-- Works reasonably well on tablets and phones, not just desktop
+- Inventory items with unit, cost per unit, current stock, and reorder level
+- Recipes attached to menu items: selling an item deducts the ingredients, scaled by portion size
+- Menu items are marked unavailable when an ingredient runs out, and come back automatically once a purchase order restocks it
+- Orders are rejected if there is not enough stock to make them
+- Low stock and out of stock counts, plus total stock value
 
-## Stack
+**Purchase orders and suppliers**
 
-- **Backend:** Node.js, Express, MongoDB (Mongoose), Socket.io, JWT auth, Nodemailer
-- **Frontend:** React (Vite), Tailwind CSS, Zustand, React Router, Recharts, lucide-react
+- Supplier records with contact details
+- Purchase orders with status pending, received, or cancelled, and payment status unpaid, partially paid, or paid
+- Receiving a purchase order adds the quantities to stock and writes an expense entry under supplies
 
-## Project layout
+**Customers and credit**
 
+- Customer records with phone lookup during order creation
+- Credit payments that build a balance on the customer, which can be settled from the customers page
+- Customer order history
+
+**Coupons**
+
+- Percentage or fixed amount discount
+- Minimum order amount, optional maximum discount cap, and expiry date
+- Active toggle per coupon, validated on the server at checkout
+
+**Reports**
+
+- Eight reports: financial overview, cash and ledger detail, category sales, best sellers, peak hours, staff performance, customer report, and supplier report
+- Date range filtering and charts
+
+**Expenses**
+
+- Expenses under rent, utilities, salaries, maintenance, supplies, or other, with amounts and dates
+
+**Receipts and settings**
+
+- Printable thermal receipt, with an optional barcode block and a footer message
+- Receipts can be reprinted from order history
+- Settings for restaurant name, address, phone, tax rate, currency symbol, receipt footer, barcode on receipt, sound alerts, and the urgent order threshold
+
+**Super admin panel**
+
+- Platform statistics: total restaurants, active, suspended, and trials
+- Restaurant list with owner and order counts, plus create, edit, suspend, activate, delete, and reset admin password
+- Demo requests from the landing page, tracked as new, contacted, or converted
+
+**Plans, trials, and permissions**
+
+- Two plans: Basic exposes a subset of modules, Pro unlocks all of them
+- Trial status with an end date set by the super admin, plus suspended and cancelled states
+- Login is refused when the trial has ended, or when the restaurant is suspended or cancelled
+- Module permissions are checked on the routes and in the API, and the super admin routes are limited to the super admin role
+
+**Also**
+
+- Dark and light mode, remembered in the browser
+- Layout adapts to phones and tablets, with a slide out navigation panel on small screens
+- Login and demo request endpoints are rate limited
+- Public landing page with the Basic and Pro plans and a demo request form. Each request is emailed to the platform owner and listed in the super admin panel
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><strong>Landing page</strong></td>
+    <td align="center"><strong>Login</strong></td>
+    <td align="center"><strong>Dashboard, dark</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/landing.png" alt="Landing page" width="100%"></td>
+    <td><img src="docs/screenshots/login.png" alt="Login screen" width="100%"></td>
+    <td><img src="docs/screenshots/dark-dashboard.png" alt="Dashboard in dark mode" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>POS terminal</strong></td>
+    <td align="center"><strong>Kitchen display</strong></td>
+    <td align="center"><strong>Waiter screen</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/pos-terminal.png" alt="POS terminal" width="100%"></td>
+    <td><img src="docs/screenshots/kds.png" alt="Kitchen display" width="100%"></td>
+    <td><img src="docs/screenshots/waiter.png" alt="Waiter screen" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Order history</strong></td>
+    <td align="center"><strong>Receipt</strong></td>
+    <td align="center"><strong>Inventory</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/order-history.png" alt="Order history" width="100%"></td>
+    <td><img src="docs/screenshots/receipt.png" alt="Printable receipt" width="100%"></td>
+    <td><img src="docs/screenshots/inventory.png" alt="Inventory" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Tables</strong></td>
+    <td align="center"><strong>Dashboard, light</strong></td>
+    <td align="center"><strong>Phone view</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/tables.png" alt="Tables" width="100%"></td>
+    <td><img src="docs/screenshots/light-dashboard.png" alt="Dashboard in light mode" width="100%"></td>
+    <td><img src="docs/screenshots/phone.png" alt="Phone view" width="100%"></td>
+  </tr>
+</table>
+
+The screenshots show demo data that was entered through the app itself. This repo has no seed script.
+
+## Getting started
+
+You need Node.js, a MongoDB database (Atlas works), and an Ably API key for the realtime screens.
+
+**Clone**
+
+```bash
+git clone https://github.com/fahadmusa725/pos-saas.git
+cd pos-saas
 ```
-pos-saas/
-├── backend/
-│   └── src/
-│       ├── config/
-│       ├── controllers/
-│       ├── middleware/
-│       ├── models/
-│       ├── routes/
-│       └── utils/
-└── frontend/
-    └── src/
-        ├── components/
-        ├── pages/
-        ├── context/
-        ├── services/
-        └── store/
-```
-
-## Running it locally
-
-You'll need Node.js and a MongoDB connection string (Atlas works fine).
 
 **Backend**
+
 ```bash
 cd backend
 npm install
+cp .env.example .env
 ```
 
-Create a `.env` file in `backend/`:
-```
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=pick_something_random
-JWT_REFRESH_SECRET=pick_something_else_random
+On Windows PowerShell use `Copy-Item .env.example .env`.
 
-SUPER_ADMIN_EMAIL=your_super_admin_email
-SUPER_ADMIN_PASSWORD=pick_something_random
+Fill in the values in `backend/.env`. The variable names are:
 
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your_email_address
-EMAIL_PASS=your_email_app_password
-EMAIL_FROM_NAME=DineFlow
-NOTIFY_EMAIL=where_demo_requests_should_be_sent
 ```
+PORT
+MONGO_URI
+JWT_SECRET
+NODE_ENV
+SUPER_ADMIN_EMAIL
+SUPER_ADMIN_PASSWORD
+CLIENT_URL
+EMAIL_HOST
+EMAIL_PORT
+EMAIL_USER
+EMAIL_PASS
+EMAIL_FROM_NAME
+NOTIFY_EMAIL
+ABLY_API_KEY
+```
+
+`CLIENT_URL` is the allowed frontend origin. The email variables are only used to send the new demo request notification. `ABLY_API_KEY` needs publish capability, because the backend sends events with it.
+
+Create the super admin account, using `SUPER_ADMIN_EMAIL` and `SUPER_ADMIN_PASSWORD` from the same file:
+
+```bash
+npm run create-superadmin
+```
+
+Then start the API:
 
 ```bash
 npm run dev
 ```
 
+`npm start` runs the same server without nodemon.
+
 **Frontend**
+
 ```bash
 cd frontend
 npm install
+```
+
+Create `frontend/.env` with one variable, pointing at the API:
+
+```
+VITE_API_URL=http://localhost:5000/api
+```
+
+A production build fails on purpose if `VITE_API_URL` is missing.
+
+```bash
 npm run dev
 ```
 
-The app runs on `localhost:5173`, and expects the backend on `localhost:5000`.
+Vite serves the app on `http://localhost:5173`.
 
-## Getting started once it's running
+## Project structure
 
-1. Register a restaurant through the sign-up flow. This creates the restaurant and its first admin account
-2. Log in as the admin
-3. Add categories, then menu items (with recipes, if you want automatic inventory tracking), then set up your tables
-4. Add staff accounts and choose what each one can access
-5. Start taking orders
+```
+pos-saas/
+├── backend/    Express API, MongoDB models and controllers, Ably publishing, Vercel entry
+└── frontend/   React single page app (Vite, Tailwind)
+```
 
-The super admin account (set via `SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_PASSWORD`) logs in separately and is used to manage restaurants on the platform, not to run a restaurant itself.
+## Deployment
+
+- Frontend on Vercel as a static build. `frontend/vercel.json` rewrites every path to `index.html` so client side routes work on refresh.
+- Backend on Vercel as a serverless function. `backend/index.js` exports the Express app without listening and reuses the MongoDB connection between invocations. `backend/server.js` is the local entry.
+- Realtime on Ably. The backend publishes to a `restaurant:<id>` channel, and the browser subscribes with a short lived token from `/api/realtime/token`.
+- Database on MongoDB Atlas.
+
+## Author
+
+Fahad Musa
